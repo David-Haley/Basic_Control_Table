@@ -1,0 +1,2 @@
+# Basic Control Table
+The project is to create a basic control table which can generate in route holding for points and opposing signals. The input will consist of a number of CSV files defining the track layout.
