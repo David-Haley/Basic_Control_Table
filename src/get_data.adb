@@ -11,19 +11,11 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 -- with Ada.Containers.Vectors;
 with DJH.Parse_CSV;
 with CT_Types; use CT_Types;
+with File_Heders; use File_Heders;
 
 package body Get_Data is
 
-   CSV : constant String := "csv";
-
    procedure Plain_Track (Track_Store : in out Track_Stores.Vector) is
-
-      Track_File_Name : constant String := "Tracks";
-
-      type Track_Header is
-        (Track_Name, Left_End, Right_End,
-         Adjacent_Left_Track, Adjacent_Left_End,
-         Adjacent_Right_Track, Adjacent_Right_End, Length);
 
       package Tracks_CSV is new DJH.Parse_CSV (Track_Header);
       use Tracks_CSV;
@@ -74,27 +66,15 @@ package body Get_Data is
 
    procedure Points_Track (Track_Store : in out Track_Stores.Vector) is
 
-      Track_File_Name : constant String := "Points";
-
-      type Points_Header is
-        (Track_Name, Points_Number, Is_Single_Ended, Points_End,
-         Has_Swing_Nose, Swing_Nose_End, Normal_Is_Straight, Points_LHSNC,
-         This_End_Facing, Adjacent_Track_Facing, Adjacent_End_Facing,
-         Length_Facing, Is_Clear_Facing, This_End_Straight,
-         Adjacent_Track_Straight, Adjacent_End_Straight,
-         Length_Straight, Is_Clear_Straight, This_End_Divergent,
-         Adjacent_Track_Divergent, Adjacent_End_Divergent,
-         Length_Divergent, Is_Clear_Divergent);
-
       package Tracks_CSV is new DJH.Parse_CSV (Points_Header);
       use Tracks_CSV;
 
       Track : Tracks (Points);
 
    begin -- Points_Track
-      Read_Header (Compose (Name => Track_File_Name, Extension => CSV));
+      Read_Header (Compose (Name => Points_File_Name, Extension => CSV));
       Put_Line ("Reading " &
-                  Compose (Name => Track_File_Name, Extension => CSV));
+                  Compose (Name => Points_File_Name, Extension => CSV));
       while Next_Row loop
          begin -- record exception block
             Track.Track_Name := To_Unbounded_String (Get_Value (Track_Name));
@@ -185,28 +165,15 @@ package body Get_Data is
 
    procedure Diamond_Track (Track_Store : in out Track_Stores.Vector) is
 
-      Track_File_Name : constant String := "Diamond";
-
-      type Diamond_Header is
-        (Track_Name, This_End_Left_Straight, Adjacent_Track_Left_Straight,
-         Adjacent_End_Left_Straight, Length_Left_Straight,
-         Is_Clear_Left_Straight, This_End_Right_Straight,
-         Adjacent_Track_Right_Straight, Adjacent_End_Right_Straight,
-         Length_Right_Straight, Is_Clear_Right_Straight,
-         This_End_Left_Cross, Adjacent_Track_Left_Cross,
-         Adjacent_End_Left_Cross, Length_Left_Cross,
-         Is_Clear_Left_Cross, This_End_Right_Cross, Adjacent_Track_Right_Cross,
-         Adjacent_End_Right_Cross, Length_Right_Cross, Is_Clear_Right_Cross);
-
       package Tracks_CSV is new DJH.Parse_CSV (Diamond_Header);
       use Tracks_CSV;
 
       Track : Tracks (Diamond);
 
    begin -- Diamond_Track
-      Read_Header (Compose (Name => Track_File_Name, Extension => CSV));
+      Read_Header (Compose (Name => Diamond_File_Name, Extension => CSV));
       Put_Line ("Reading " &
-                  Compose (Name => Track_File_Name, Extension => CSV));
+                  Compose (Name => Diamond_File_Name, Extension => CSV));
       while Next_Row loop
          begin -- record exception block
             Track.Track_Name := To_Unbounded_String (Get_Value (Track_Name));
@@ -301,30 +268,15 @@ package body Get_Data is
 
    procedure Switch_Diamond_Track (Track_Store : in out Track_Stores.Vector) is
 
-      Track_File_Name : constant String := "Switch_Diamond";
-
-      type Switch_Diamond_Header is
-        (Track_Name, Diamond_Number, Diamond_End, Has_Left_Swing_Nose,
-         Left_Swing_Nose_End, Has_Right_Swing_Nose, Right_Swing_Nose_End,
-         Diamond_LHSNC, This_End_Left_Straight, Adjacent_Track_Left_Straight,
-         Adjacent_End_Left_Straight, Length_Left_Straight,
-         Is_Clear_Left_Straight, This_End_Right_Straight,
-         Adjacent_Track_Right_Straight, Adjacent_End_Right_Straight,
-         Length_Right_Straight, Is_Clear_Right_Straight,
-         This_End_Left_Cross, Adjacent_Track_Left_Cross,
-         Adjacent_End_Left_Cross, Length_Left_Cross,
-         Is_Clear_Left_Cross, This_End_Right_Cross, Adjacent_Track_Right_Cross,
-         Adjacent_End_Right_Cross, Length_Right_Cross, Is_Clear_Right_Cross);
-
       package Tracks_CSV is new DJH.Parse_CSV (Switch_Diamond_Header);
       use Tracks_CSV;
 
       Track : Tracks (Switch_Diamond);
 
    begin -- Switch_Diamond_Track
-      Read_Header (Compose (Name => Track_File_Name, Extension => CSV));
+      Read_Header (Compose (Name => Switch_Diamond_File_Name, Extension => CSV));
       Put_Line ("Reading " &
-                  Compose (Name => Track_File_Name, Extension => CSV));
+                  Compose (Name => Switch_Diamond_File_Name, Extension => CSV));
       while Next_Row loop
          begin -- record exception block
             Track.Track_Name := To_Unbounded_String (Get_Value (Track_Name));
@@ -452,11 +404,6 @@ package body Get_Data is
 
    procedure Get (Signal_Store : out Signal_Stores.Map) is
 
-      Signal_File_Name : constant String := "Signals";
-
-      type Signal_Header is
-        (Signal_Number, Is_Main, Is_Shunt, Replacement_Track, Entrence_End);
-
       package Signals_CSV is new DJH.Parse_CSV (Signal_Header);
       use Signals_CSV;
 
@@ -493,12 +440,7 @@ package body Get_Data is
 
    procedure Get (Route_Store : out Route_Stores.Map) is
 
-      Route_File_Name : constant String := "Routes";
-
       Route : Routes;
-
-      type Route_Header is
-        (Route_Name, Entrance_Signal, Exit_Signal, Route_Class);
 
       package Route_CSV is new DJH.Parse_CSV (Route_Header);
       use Route_CSV;
