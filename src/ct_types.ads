@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 26/03/2023
+-- Last Edit : 27/03/2023
+-- 20230327 : Additional default values added;
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Vectors;
@@ -27,9 +28,9 @@ package CT_Types is
      Static_Predicate => Point_Ends in 'A' .. 'Z';
 
    type End_Elements is record
-      Adjacent_Track : Track_Names;
-      This_End, Adjacent_End : Track_Ends;
-      Length : Metres; -- Measured from TOS or centre of diamond.
+      Adjacent_Track : Track_Names := Track_Names (Null_Unbounded_String);
+      This_End, Adjacent_End : Track_Ends := 'z';
+      Length : Metres := 0; -- Measured from TOS or centre of diamond.
       Is_Clear : Boolean := True;
    end record; -- End_Elements
 
@@ -46,16 +47,17 @@ package CT_Types is
       Track_Name : Track_Names;
       case Track_Type is
       when Plain =>
-         Adjacent_Left_Track, Adjacent_Right_Track : Track_Names;
-         Left_End, Adjacent_Right_End : Track_Ends := 'a';
-         Right_End, Adjacent_Left_End : Track_Ends := 'b';
-         Length : Metres;
+         Adjacent_Left_Track, Adjacent_Right_Track : Track_Names :=
+           Track_Names (Null_Unbounded_String);
+         Left_End, Adjacent_Right_End : Track_Ends := 'z';
+         Right_End, Adjacent_Left_End : Track_Ends := 'z';
+         Length : Metres := 0;
       when Points =>
          Points_Number : Point_Numbers;
          Is_Single_Ended : Boolean := True;
          Points_End : Point_Ends := 'A';
          Has_Swing_Nose : Boolean := False;
-         Swing_Nose_End : Point_Ends := 'B';
+         Swing_Nose_End : Point_Ends := 'Z';
          Normal_Is_Straight : Boolean := True;
          Points_LHSNC : Boolean;
          Point_End_Array : Point_End_Arrays;
@@ -63,13 +65,13 @@ package CT_Types is
          Diamond_End_Array : Diamond_End_Arrays;
       when Switch_Diamond =>
          Diamond_Number : Point_Numbers;
-         Diamond_End : Point_Ends := 'D';
-         Has_Left_Swing_Nose, Has_Right_Swing_Nose : Boolean := True;
-         Left_Swing_Nose_End : Point_Ends := 'C';
-         Right_Swing_Nose_End : Point_Ends := 'E';
+         Diamond_End : Point_Ends := 'A';
+         Has_Left_Swing_Nose, Has_Right_Swing_Nose : Boolean := False;
+         Left_Swing_Nose_End : Point_Ends := 'Z';
+         Right_Swing_Nose_End : Point_Ends := 'Z';
          Diamond_LHSNC : Boolean;
          -- it is assuned that whatever is considered straight is Normal.
-         -- Straight should be defined to be made in the Normal lie
+         -- Straight should be defined to be the Normal lie.
          Switch_Diamond_End_Array : Diamond_End_Arrays;
          -- N.B. must have different name but has the same declaration as fixed
          -- Diamond
@@ -102,6 +104,9 @@ package CT_Types is
    package Signal_Stores is new
      Ada.Containers.Ordered_Maps (Signal_Numbers, Signals);
 
+   package Sub_Route_to_Signal_Maps is new
+     Ada.Containers.Ordered_Maps (Track_Keys, Signal_Numbers);
+
    type Route_Names is new Unbounded_String;
    type Route_Classes is (Main, Call_On, Shunt, Warner);
 
@@ -128,8 +133,5 @@ package CT_Types is
 
    package Route_Maps is new
      Ada.Containers.Ordered_Maps (Route_Names, Sub_Route_Lists.Vector);
-
-   package Sub_Route_to_Signal_Maps is new
-     Ada.Containers.Ordered_Maps (Track_Keys, Signal_Numbers);
 
 end CT_Types;
