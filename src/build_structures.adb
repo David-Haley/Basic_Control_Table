@@ -110,9 +110,34 @@ package body Build_Structures is
       use Track_Dictionaries;
       use Sub_Route_to_Signal_Maps;
 
+      Track_Key : Track_Keys;
+      Errors_Detected : Boolean := False;
+
    begin -- Build
       Clear (Sub_Route_to_Signal_Map);
       Put_Line (" Building Sub_Route_to_Signal_Map");
+      for Sc in Iterate (Signal_Store) loop
+         begin -- Include exception block
+            Track_Key := (Signal_Store (Sc).Replacement_Track,
+                          Signal_Store (Sc).Entrance_End);
+            if Contains (Sub_Route_to_Signal_Map, Track_Key) then
+               raise Data_Error with "Duplicate signal" &
+                 Key (Sc)'img & " at " & Signal_Store (Sc).Entrance_End &
+                 " end of " & To_String (Signal_Store (Sc).Replacement_Track) &
+                 " track";
+            else
+               include (Sub_Route_to_Signal_Map, Track_Key, Key (Sc));
+            end if; -- Contains (Sub_Route_to_Signal_Map, Track_Key)
+         exception
+            when E : others =>
+               Put_Line (Exception_Name (E) & " - " & Exception_Message (E));
+               Errors_Detected := True;
+         end; -- Include exception block
+      end loop; -- Sc in Iterate (Signal_Store)
+      if Errors_Detected then
+         raise Data_Error with
+           "Errors detected building Sub_Route_to_Signal_Map";
+      end if; -- Errors_Detected
    end Build;
 
    procedure Build (Track_Store : in Track_Stores.Vector;
@@ -131,7 +156,61 @@ package body Build_Structures is
       use Route_Stores;
       use Track_Dictionaries;
       use Sub_Route_to_Signal_Maps;
+      use Sub_Route_Lists;
       use Route_Maps;
+
+      procedure Find_Route (Track_Store : in Track_Stores.Vector;
+                            Track_Dictionary : in Track_Dictionaries.Map;
+                            Route_End : in Track_Keys;
+                            Is_Main : in Boolean;
+                            Found : in out Boolean;
+                            Sub_Route_List : in out Sub_Route_Lists.Vector) is
+
+         Test_Sub_Route : Sub_Routes;
+         Current_Track, Next_Track : Track_Indices;
+         Next_Track_Key : Track_Keys;
+
+      begin -- Find_Route
+         Found :=
+           Last_Element (Sub_Route_List).Track_Name = Route_End.Track_Name and
+           Last_Element (Sub_Route_List).Exit_End = Route_End.Track_End;
+         if not Found then
+            Current_Track :=
+              Track_Dictionary ((Last_Element (Sub_Route_List).Track_Name,
+                                Last_Element (Sub_Route_List).Entrance_End));
+            case Track_Store (Current_Track).Track_Type is
+               when Plain =>
+                  if Track_Store (Current_Track).Left_End =
+                    Last_Element (Sub_Route_List).Exit_End then
+                     Next_Track_Key :=
+                       (Track_Store (Current_Track).Adjacent_Left_Track,
+                        Track_Store (Current_Track).Adjacent_Left_End);
+                  elsif Track_Store (Current_Track).Right_End =
+                    Last_Element (Sub_Route_List).Exit_End then
+                     Next_Track_Key :=
+                       (Track_Store (Current_Track).Adjacent_Right_Track,
+                        Track_Store (Current_Track).Adjacent_Right_End);
+                  else
+                     raise Data_Error with "Error in linkage " &
+                       To_String (Track_Store (Current_Track).Track_Name) &
+                       " doesn't have end " &
+                       Last_Element (Sub_Route_List).Exit_End;
+                  end if; -- Track_Store (Current_Track).Adjacent_Left_End ...
+               when Points =>
+                  null;
+               when Diamond =>
+                  null;
+               when Switch_Diamond =>
+                  null;
+            end case; --
+            if Contains (Track_Dictionary, Next_Track_Key) then
+               Next_Track := Track_Dictionary (Next_Track_Key);
+               Test_Sub_Route.Track_Name := Next_Track_Key.Track_Name;
+               Test_Sub_Route.Entrance_End := Next_Track_Key.Track_End;
+
+            end if; -- Contains (Track_Dictionary, Next_Track_Key)
+         end if; -- not Found
+      end Find_Route;
 
    begin -- Build
       Clear (Route_Map);

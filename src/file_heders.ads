@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 27/03/2023
+-- Last Edit : 28/03/2023
+-- 20230328 : Correction of spelling to Entrance_End.
 
 package File_Heders is
 
@@ -58,7 +59,7 @@ package File_Heders is
    Signal_File_Name : constant String := "Signals";
 
    type Signal_Header is
-     (Signal_Number, Is_Main, Is_Shunt, Replacement_Track, Entrence_End);
+     (Signal_Number, Is_Main, Is_Shunt, Replacement_Track, Entrance_End);
 
    Route_File_Name : constant String := "Routes";
 

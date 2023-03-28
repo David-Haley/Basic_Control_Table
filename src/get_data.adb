@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 25/03/2023
--- Last Edit : 27/03/2023
+-- Last Edit : 28/03/2023
+-- 20230328 : Correction of spelling to Entrance_End.
 -- 20230327 : Reading of adjacent end made conditional on there being an
 -- adjacent track name defined. Reading of swing noses end identifiers made
 -- conditional on swing nose being defined as True.
@@ -469,11 +470,11 @@ package body Get_Data is
             Signal.Is_Shunt := Boolean'Value (Get_Value (Is_Shunt));
             Signal.Replacement_Track :=
               To_Unbounded_String (Get_Value (Replacement_Track));
-            if Get_Value (Entrence_End)'Length = 1 then
-               Signal.Entrence_End := Get_Value (Entrence_End) (1);
+            if Get_Value (Entrance_End)'Length = 1 then
+               Signal.Entrance_End := Get_Value (Entrance_End) (1);
             else
                raise Data_Error with "invalid data for Entrence_End";
-            end if; --  Get_Value (Entrence_End)'Length = 1
+            end if; --  Get_Value (Entrance_End)'Length = 1
             Signal_Stores.Include (Signal_Store,
                                    Signal_Numbers'Value (
                                      Get_Value (Signal_Number)),

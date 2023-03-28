@@ -2,8 +2,9 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 27/03/2023
--- 20230327 : Additional default values added;
+-- Last Edit : 28/03/2023
+-- 20230328 : Correction of spelling to Entrance_End.
+-- 20230327 : Additional default values added.
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Vectors;
@@ -98,7 +99,7 @@ package CT_Types is
    type Signals is record
       Is_Main, Is_Shunt : Boolean;
       Replacement_Track : Track_Names;
-      Entrence_End : Track_Ends;
+      Entrance_End : Track_Ends;
    end record; -- Signals
 
    package Signal_Stores is new
