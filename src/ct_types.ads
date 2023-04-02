@@ -2,7 +2,9 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 28/03/2023
+-- Last Edit : 02/04/2023
+-- 20230402 : In signals Replacement_Track type becomes Track_Keys.
+-- Subtype Main_Route_Classes added.
 -- 20230328 : Correction of spelling to Entrance_End.
 -- 20230327 : Additional default values added.
 
@@ -98,8 +100,7 @@ package CT_Types is
 
    type Signals is record
       Is_Main, Is_Shunt : Boolean;
-      Replacement_Track : Track_Names;
-      Entrance_End : Track_Ends;
+      Replacement_Track : Track_Keys;
    end record; -- Signals
 
    package Signal_Stores is new
@@ -109,7 +110,8 @@ package CT_Types is
      Ada.Containers.Ordered_Maps (Track_Keys, Signal_Numbers);
 
    type Route_Names is new Unbounded_String;
-   type Route_Classes is (Main, Call_On, Shunt, Warner);
+   type Route_Classes is (Main, Call_On, Warner, Shunt);
+   subtype Main_Route_Classes is Route_Classes range Main .. Call_on;
 
    type Routes is record
       Entrance_Signal, Exit_Signal : Signal_Numbers;

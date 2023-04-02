@@ -2,7 +2,7 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 31/03/2023
+-- Last Edit : 02/04/2023
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Exceptions; use Ada.Exceptions;
@@ -118,12 +118,11 @@ package body Build_Structures is
       Put_Line (" Building Sub_Route_to_Signal_Map");
       for Sc in Iterate (Signal_Store) loop
          begin -- Include exception block
-            Track_Key := (Signal_Store (Sc).Replacement_Track,
-                          Signal_Store (Sc).Entrance_End);
+            Track_Key := Signal_Store (Sc).Replacement_Track;
             if Contains (Sub_Route_to_Signal_Map, Track_Key) then
-               raise Data_Error with "Duplicate signal" &
-                 Key (Sc)'img & " at " & Signal_Store (Sc).Entrance_End &
-                 " end of " & To_String (Signal_Store (Sc).Replacement_Track) &
+               raise Data_Error with "Duplicate signal" & Key (Sc)'img & " at "
+                 & Signal_Store (Sc).Replacement_Track.Track_End & " end of " &
+                 To_String (Signal_Store (Sc).Replacement_Track.Track_Name) &
                  " track";
             else
                include (Sub_Route_to_Signal_Map, Track_Key, Key (Sc));
@@ -158,6 +157,105 @@ package body Build_Structures is
       use Sub_Route_to_Signal_Maps;
       use Sub_Route_Lists;
       use Route_Maps;
+
+      function Find_Exit (Track_Store : in Track_Stores.Vector;
+                          Track_Dictionary : in Track_Dictionaries.Map;
+                          Track_Key : in Track_Keys)
+                             return Sub_Route_Lists.Vector is
+
+         Track : Tracks := Track_Store (Track_Dictionary (Track_Key));
+         Result : Sub_Route_Lists.Vector := Sub_Route_Lists.Empty_Vector;
+         Sub_Route : Sub_Routes;
+
+      begin -- Find_Exit
+         Sub_Route.Track_Name := Track_Key.Track_Name;
+         Sub_Route.Entrance_End := Track_Key.Track_End;
+         case Track.Track_Type is
+            when Plain =>
+               if Track_Key.Track_End = Track.Left_End then
+                  Sub_Route.Exit_End := Track.Right_End;
+                  Append (Result, Sub_Route);
+               elsif Track_Key.Track_End = Track.Right_End then
+                  Sub_Route.Exit_End := Track.Left_End;
+                  Append (Result, Sub_Route);
+               else
+                  raise Data_Error with "Error in linkage " &
+                    To_String (Track.Track_Name) & " doesn't have end " &
+                    Track_Key.Track_End;
+               end if; -- Track_Key.Track_End = ...
+            when Points =>
+               if Track_Key.Track_End =
+                 Track.Point_End_Array (Facing).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Point_End_Array (Straight).This_End;
+                  Append (Result, Sub_Route);
+                  Sub_Route.Exit_End :=
+                    Track.Point_End_Array (Divergent).This_End;
+                  Append (Result, Sub_Route);
+               elsif Track_Key.Track_End =
+                 Track.Point_End_Array (Straight).This_End or
+                 Track_Key.Track_End =
+                   Track.Point_End_Array (Divergent).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Point_End_Array (Facing).This_End;
+                  Append (Result, Sub_Route);
+               else
+                  raise Data_Error with "Error in linkage " &
+                    To_String (Track.Track_Name) & " doesn't have end " &
+                    Track_Key.Track_End;
+               end if; -- Track_Key.Track_End = ...
+            when Diamond =>
+               if Track_Key.Track_End =
+                 Track.Diamond_End_Array (Left_Straight).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Diamond_End_Array (Right_Straight).This_End;
+                  Append (Result, Sub_Route);
+               elsif Track_Key.Track_End =
+                 Track.Diamond_End_Array (Left_Cross).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Diamond_End_Array (Right_Cross).This_End;
+               elsif Track_Key.Track_End =
+                 Track.Diamond_End_Array (Right_Straight).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Diamond_End_Array (Left_Straight).This_End;
+                  Append (Result, Sub_Route);
+               elsif Track_Key.Track_End =
+                 Track.Diamond_End_Array (Right_Cross).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Diamond_End_Array (Left_Cross).This_End;
+                  Append (Result, Sub_Route);
+               else
+                  raise Data_Error with "Error in linkage " &
+                    To_String (Track.Track_Name) & " doesn't have end " &
+                    Track_Key.Track_End;
+               end if; -- Track_Key.Track_End = ...
+            when Switch_Diamond =>
+               if Track_Key.Track_End =
+                 Track.Switch_Diamond_End_Array (Left_Straight).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Switch_Diamond_End_Array (Right_Straight).This_End;
+               elsif Track_Key.Track_End =
+                 Track.Switch_Diamond_End_Array (Left_Cross).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Switch_Diamond_End_Array (Right_Cross).This_End;
+               elsif Track_Key.Track_End =
+                 Track.Switch_Diamond_End_Array (Right_Straight).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Switch_Diamond_End_Array (Left_Straight).This_End;
+                  Append (Result, Sub_Route);
+               elsif Track_Key.Track_End =
+                 Track.Switch_Diamond_End_Array (Right_Cross).This_End then
+                  Sub_Route.Exit_End :=
+                    Track.Switch_Diamond_End_Array (Left_Cross).This_End;
+                  Append (Result, Sub_Route);
+               else
+                  raise Data_Error with "Error in linkage " &
+                    To_String (Track.Track_Name) & " doesn't have end " &
+                    Track_Key.Track_End;
+               end if; -- Track_Key.Track_End = ...
+         end case; -- Track.Track_Type
+         return Result;
+      end Find_Exit;
 
       procedure Find_Route (Track_Store : in Track_Stores.Vector;
                             Track_Dictionary : in Track_Dictionaries.Map;
@@ -275,106 +373,6 @@ package body Build_Structures is
             return Next_Track_Key;
          end Find_Next_Key;
 
-         function Find_Next_Exit (Track_Store : in Track_Stores.Vector;
-                                  Track_Dictionary : in Track_Dictionaries.Map;
-                                  Track_Key : in Track_Keys)
-                                  return Sub_Route_Lists.Vector is
-
-            Track : Tracks := Track_Store (Track_Dictionary (Track_Key));
-            Result : Sub_Route_Lists.Vector := Sub_Route_Lists.Empty_Vector;
-            Sub_Route : Sub_Routes;
-
-         begin -- Find_Next_Exit
-            Sub_Route.Track_Name := Track_Key.Track_Name;
-            Sub_Route.Entrance_End := Track_Key.Track_End;
-            case Track.Track_Type is
-               when Plain =>
-                  if Track_Key.Track_End = Track.Left_End then
-                     Sub_Route.Exit_End := Track.Right_End;
-                     Append (Result, Sub_Route);
-                  elsif Track_Key.Track_End = Track.Right_End then
-                     Sub_Route.Exit_End := Track.Left_End;
-                     Append (Result, Sub_Route);
-                  else
-                     raise Data_Error with "Error in linkage " &
-                       To_String (Track.Track_Name) & " doesn't have end " &
-                       Track_Key.Track_End;
-                  end if; -- Track_Key.Track_End = ...
-               when Points =>
-                  if Track_Key.Track_End =
-                    Track.Point_End_Array (Facing).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Point_End_Array (Straight).This_End;
-                     Append (Result, Sub_Route);
-                     Sub_Route.Exit_End :=
-                       Track.Point_End_Array (Divergent).This_End;
-                     Append (Result, Sub_Route);
-                  elsif Track_Key.Track_End =
-                    Track.Point_End_Array (Straight).This_End or
-                    Track_Key.Track_End =
-                      Track.Point_End_Array (Divergent).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Point_End_Array (Facing).This_End;
-                     Append (Result, Sub_Route);
-                  else
-                     raise Data_Error with "Error in linkage " &
-                       To_String (Track.Track_Name) & " doesn't have end " &
-                       Track_Key.Track_End;
-                  end if; -- Track_Key.Track_End = ...
-               when Diamond =>
-                  if Track_Key.Track_End =
-                    Track.Diamond_End_Array (Left_Straight).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Diamond_End_Array (Right_Straight).This_End;
-                     Append (Result, Sub_Route);
-                  elsif Track_Key.Track_End =
-                    Track.Diamond_End_Array (Left_Cross).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Diamond_End_Array (Right_Cross).This_End;
-                  elsif Track_Key.Track_End =
-                    Track.Diamond_End_Array (Right_Straight).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Diamond_End_Array (Left_Straight).This_End;
-                     Append (Result, Sub_Route);
-                  elsif Track_Key.Track_End =
-                    Track.Diamond_End_Array (Right_Cross).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Diamond_End_Array (Left_Cross).This_End;
-                     Append (Result, Sub_Route);
-                  else
-                     raise Data_Error with "Error in linkage " &
-                       To_String (Track.Track_Name) & " doesn't have end " &
-                       Track_Key.Track_End;
-                  end if; -- Track_Key.Track_End = ...
-               when Switch_Diamond =>
-                  if Track_Key.Track_End =
-                    Track.Switch_Diamond_End_Array (Left_Straight).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Switch_Diamond_End_Array (Right_Straight).This_End;
-                  elsif Track_Key.Track_End =
-                    Track.Switch_Diamond_End_Array (Left_Cross).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Switch_Diamond_End_Array (Right_Cross).This_End;
-                  elsif Track_Key.Track_End =
-                    Track.Switch_Diamond_End_Array (Right_Straight).This_End
-                  then
-                     Sub_Route.Exit_End :=
-                       Track.Switch_Diamond_End_Array (Left_Straight).This_End;
-                     Append (Result, Sub_Route);
-                  elsif Track_Key.Track_End =
-                    Track.Switch_Diamond_End_Array (Right_Cross).This_End then
-                     Sub_Route.Exit_End :=
-                       Track.Switch_Diamond_End_Array (Left_Cross).This_End;
-                     Append (Result, Sub_Route);
-                  else
-                     raise Data_Error with "Error in linkage " &
-                       To_String (Track.Track_Name) & " doesn't have end " &
-                       Track_Key.Track_End;
-                  end if; -- Track_Key.Track_End = ...
-            end case; -- Track.Track_Type
-            return Result;
-         end Find_Next_Exit;
-
          Current_Track_Key, Next_Track_Key : Track_Keys;
          Wrong_Exit : Boolean;
          Test_List : Sub_Route_Lists.Vector;
@@ -401,8 +399,8 @@ package body Build_Structures is
             if Contains (Track_Dictionary, Next_Track_Key) then
                -- Only continue search if not "end of world" e.g. trap point
                -- or limit of data.
-               Test_List := Find_Next_Exit (Track_Store, Track_Dictionary,
-                                            Next_Track_Key);
+               Test_List := Find_Exit (Track_Store, Track_Dictionary,
+                                       Next_Track_Key);
                loop -- check one exit
                   Append (Sub_Route_List, First_Element (Test_List));
                   Find_Route (Track_Store, Track_Dictionary, Route_End, Is_Main,
@@ -417,9 +415,35 @@ package body Build_Structures is
          end if; -- not Found
       end Find_Route;
 
+      Route_Entrance : Track_Keys;
+      Sub_Route_List : Sub_Route_Lists.Vector;
+      Is_Main : Boolean;
+      Found : Boolean := False;
+
    begin -- Build
+      Put_Line ("Building Route_Map");
       Clear (Route_Map);
       for R in Iterate (Route_Store) loop
+         Clear (Sub_Route_List);
+         Route_Entrance :=
+           Signal_Store (Route_Store (R).Entrance_Signal).Replacement_Track;
+         Sub_Route_List :=
+           Find_Exit (Track_Store, Track_Dictionary, Route_Entrance);
+         Is_Main := Route_Store (R).Route_Class in Main_Route_Classes;
+         loop -- through exits of entrance track
+            Find_Route (Track_Store, Track_Dictionary,
+                        Signal_Store (Route_Store (R).Exit_Signal).
+                          Replacement_Track,
+                        Is_Main, Found, Sub_Route_List);
+            exit when Found or Is_Empty (Sub_Route_List);
+            Delete_First (Sub_Route_List);
+         end loop; -- through exits of entrance track
+         if Found then
+            include (Route_Map, Key (R), Sub_Route_List);
+         else
+            raise Data_Error with "Unable to resolve route " &
+              To_String (Key (R));
+         end if; -- Found
       end loop; -- R in Iterate (Route_Store)
    end Build;
 
