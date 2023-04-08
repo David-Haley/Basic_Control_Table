@@ -5,15 +5,15 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 02/04/2023
+-- Last Edit : 08/04/2023
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Text_IO.Unbounded_IO; use Ada.Text_IO.Unbounded_IO;
 with CT_Types; use CT_Types;
 with Get_Data; use Get_Data;
---  with Build_Structures; use Build_Structures;
---  use Route_Maps;
---  use Sub_Route_Lists;
+with Build_Structures; use Build_Structures;
+use CT_Types.Route_Maps;
+use CT_Types.Sub_Route_Lists;
 
 procedure Basic_Ct is
 
@@ -36,7 +36,7 @@ begin
           Sub_Route_to_Signal_Map, Route_Map);
    Create (Output_File, Out_File, "Basic_CT.txt");
    for R in Iterate (Route_Map) loop
-      Put (Output_File, Key (R));
+      Put (Output_File,  Key (R));
       Put (Output_File, " {");
       for S in Iterate (Route_Map (R)) loop
          Put (Output_File, Route_Map (R) (S).Track_Name);

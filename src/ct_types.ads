@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 02/04/2023
+-- Last Edit : 08/04/2023
+-- 20230408 : Track_Names  and Route_Names made subtypes;
 -- 20230402 : In signals Replacement_Track type becomes Track_Keys.
 -- Subtype Main_Route_Classes added.
 -- 20230328 : Correction of spelling to Entrance_End.
@@ -17,7 +18,7 @@ package CT_Types is
 
    type Track_Types is (Plain, Points, Diamond, Switch_Diamond);
 
-   type Track_Names is new Unbounded_String;
+   subtype Track_Names is Unbounded_String;
    subtype Track_Ends is Character with
      Static_Predicate => Track_Ends in 'a' .. 'z';
    -- N.B limits tracks to having no more than 26 ends this implies that a
@@ -31,7 +32,7 @@ package CT_Types is
      Static_Predicate => Point_Ends in 'A' .. 'Z';
 
    type End_Elements is record
-      Adjacent_Track : Track_Names := Track_Names (Null_Unbounded_String);
+      Adjacent_Track : Track_Names := Null_Unbounded_String;
       This_End, Adjacent_End : Track_Ends := 'z';
       Length : Metres := 0; -- Measured from TOS or centre of diamond.
       Is_Clear : Boolean := True;
@@ -51,7 +52,7 @@ package CT_Types is
       case Track_Type is
       when Plain =>
          Adjacent_Left_Track, Adjacent_Right_Track : Track_Names :=
-           Track_Names (Null_Unbounded_String);
+           Null_Unbounded_String;
          Left_End, Adjacent_Right_End : Track_Ends := 'z';
          Right_End, Adjacent_Left_End : Track_Ends := 'z';
          Length : Metres := 0;
@@ -109,7 +110,7 @@ package CT_Types is
    package Sub_Route_to_Signal_Maps is new
      Ada.Containers.Ordered_Maps (Track_Keys, Signal_Numbers);
 
-   type Route_Names is new Unbounded_String;
+   subtype Route_Names is Unbounded_String;
    type Route_Classes is (Main, Call_On, Warner, Shunt);
    subtype Main_Route_Classes is Route_Classes range Main .. Call_on;
 

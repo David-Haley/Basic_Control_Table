@@ -2,9 +2,11 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 02/04/2023
+-- Last Edit : 08/04/2023
+-- 20230408 : Context Ada.Strings.Unbounded added.
 
 with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Exceptions; use Ada.Exceptions;
 
 package body Build_Structures is
@@ -115,7 +117,7 @@ package body Build_Structures is
 
    begin -- Build
       Clear (Sub_Route_to_Signal_Map);
-      Put_Line (" Building Sub_Route_to_Signal_Map");
+      Put_Line ("Building Sub_Route_to_Signal_Map");
       for Sc in Iterate (Signal_Store) loop
          begin -- Include exception block
             Track_Key := Signal_Store (Sc).Replacement_Track;
