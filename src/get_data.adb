@@ -2,7 +2,9 @@
 
 -- Author    : David Haley
 -- Created   : 25/03/2023
--- Last Edit : 08/04/2023
+-- Last Edit : 09/04/2023
+-- 20230409 : for adjacent track linkage Track_Name and Track_End consolidated
+-- into Track_Keys, sall to Append was missing from Diamond and Switch_Diamond.
 -- 20230408 : Correction of reading single characters.
 -- 20230402 : In signals Replacement_Track type becomes Track_Keys.
 -- 20230328 : Correction of spelling to Entrance_End.
@@ -48,26 +50,26 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for Right_End";
             end if; -- Get_Value (Right_End)'Length = 1
-            Track.Adjacent_Left_Track :=
+            Track.Adjacent_Left.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Left_Track));
-            if Length (Track.Adjacent_Left_Track) > 0 then
+            if Length (Track.Adjacent_Left.Track_Name) > 0 then
                if Get_Value (Adjacent_Left_End)'Length = 1 then
-                  Track.Adjacent_Left_End :=
+                  Track.Adjacent_Left.Track_End :=
                     First_Character (Get_Value (Adjacent_Left_End));
                else
                   raise Data_Error with "Invalid data for Adjacent_Left_End";
                end if; -- Get_Value (Adjacent_Left_End)'Length = 1
-            end if; -- Length (Track.Adjacent_Left_Track) > 0
-            Track.Adjacent_Right_Track :=
+            end if; -- Length (Track.Adjacent_Left.Track_Name) > 0
+            Track.Adjacent_Right.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Right_Track));
-            if Length (Track.Adjacent_Right_Track) > 0 then
+            if Length (Track.Adjacent_Right.Track_Name) > 0 then
                if Get_Value (Adjacent_Right_End)'Length = 1 then
-                  Track.Adjacent_Right_End :=
+                  Track.Adjacent_Right.Track_End :=
                     First_Character (Get_Value (Adjacent_Right_End));
                else
                   raise Data_Error with "Invalid data for Adjacent_Right_End";
                end if; -- Get_Value (Adjacent_Right_End)'Length = 1
-            end if; -- Length (Track.Adjacent_Right_Track) > 0
+            end if; -- Length (Track.Adjacent_Right.Track_Name)
             Track.Length := Metres'Value (Get_Value (Length));
             Track_Stores.Append (Track_Store, Track);
          exception
@@ -122,16 +124,17 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Facing";
             end if; -- Get_Value (This_End_Facing)'Length = 1
-            Track.Point_End_Array (Facing).Adjacent_Track :=
+            Track.Point_End_Array (Facing).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Facing));
-            if Length (Track.Point_End_Array (Facing).Adjacent_Track) > 0 then
+            if Length (Track.Point_End_Array (Facing).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Facing)'Length = 1 then
-                  Track.Point_End_Array (Facing).Adjacent_End :=
+                  Track.Point_End_Array (Facing).Adjacent.Track_End :=
                     First_Character (Get_Value (Adjacent_End_Facing));
                else
                   raise Data_Error with "Invalid data for Adjacent_End_Facing";
                end if; -- Get_Value (Adjacent_End_Facing)'Length
-            end if; -- Length (Track.Point_End_Array (Facing).Adjacent_Track) ...
+            end if; -- Length (Track.Point_End_Array (Facing).Adjacent ...
             Track.Point_End_Array (Facing).Length :=
               Metres'Value (Get_Value (Length_Facing));
             Track.Point_End_Array (Facing).Is_Clear :=
@@ -143,17 +146,18 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Straight";
             end if; -- Get_Value (This_End_Straight)'Length
-            Track.Point_End_Array (Straight).Adjacent_Track :=
+            Track.Point_End_Array (Straight).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Straight));
-            if Length (Track.Point_End_Array (Straight).Adjacent_Track) > 0 then
+            if Length (Track.Point_End_Array (Straight).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Straight)'Length = 1 then
-                  Track.Point_End_Array (Straight).Adjacent_End :=
+                  Track.Point_End_Array (Straight).Adjacent.Track_End :=
                     First_Character (Get_Value (Adjacent_End_Straight));
                else
                   raise Data_Error with
                     "Invalid data for Adjacent_End_Straight";
                end if; -- Get_Value (Adjacent_End_Straight)'Length
-            end if; -- Length (Track.Point_End_Array (Straight).Adjacent_Track)
+            end if; -- Length (Track.Point_End_Array (Straight).Adjacent ...
             Track.Point_End_Array (Straight).Length :=
               Metres'Value (Get_Value (Length_Straight));
             Track.Point_End_Array (Straight).Is_Clear :=
@@ -165,18 +169,18 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Divergent";
             end if; -- Get_Value (This_End_Divergent)'Length
-            Track.Point_End_Array (Divergent).Adjacent_Track :=
+            Track.Point_End_Array (Divergent).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Divergent));
-            if Length (Track.Point_End_Array (Divergent).Adjacent_Track) > 0
-            then
+            if Length (Track.Point_End_Array (Divergent).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Divergent)'Length = 1 then
-                  Track.Point_End_Array (Divergent).Adjacent_End :=
+                  Track.Point_End_Array (Divergent).Adjacent.Track_End :=
                     First_Character (Get_Value (Adjacent_End_Divergent));
                else
                   raise Data_Error with
                     "Invalid data for Adjacent_End_Divergent";
                end if; -- Get_Value (Adjacent_End_Divergent)'Length
-            end if; -- Length (Track.Point_End_Array (Divergent).Adjacent_Track)
+            end if; -- Length (Track.Point_End_Array (Divergent).Adjacent ...
             Track.Point_End_Array (Divergent).Length :=
               Metres'Value (Get_Value (Length_Divergent));
             Track.Point_End_Array (Divergent).Is_Clear :=
@@ -212,12 +216,12 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Left_Straight";
             end if; -- Get_Value (This_End_Left_Straight)'Length = 1
-            Track.Diamond_End_Array (Left_Straight).Adjacent_Track :=
+            Track.Diamond_End_Array (Left_Straight).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Left_Straight));
-            if Length (Track.Diamond_End_Array (Left_Straight).Adjacent_Track)
-              > 0 then
+            if Length (Track.Diamond_End_Array (Left_Straight).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Left_Straight)'Length = 1 then
-                  Track.Diamond_End_Array (Left_Straight).Adjacent_End :=
+                  Track.Diamond_End_Array (Left_Straight).Adjacent.Track_End :=
                     First_Character (Get_Value (Adjacent_End_Left_Straight));
                else
                   raise Data_Error with
@@ -235,12 +239,12 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Right_Straight";
             end if; -- Get_Value (This_End_Right_Straight)'Length = 1
-            Track.Diamond_End_Array (Right_Straight).Adjacent_Track :=
+            Track.Diamond_End_Array (Right_Straight).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Right_Straight));
-            if Length (Track.Diamond_End_Array (Right_Straight).Adjacent_Track)
-              > 0 then
+            if Length (Track.Diamond_End_Array (Right_Straight).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Right_Straight)'Length = 1 then
-                  Track.Diamond_End_Array (Right_Straight).Adjacent_End :=
+                  Track.Diamond_End_Array (Right_Straight).Adjacent.Track_End :=
                     First_Character (Get_Value (Adjacent_End_Right_Straight));
                else
                   raise Data_Error with
@@ -258,12 +262,12 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Left_Cross";
             end if; -- Get_Value (This_End_Left_Cross)'Length = 1
-            Track.Diamond_End_Array (Left_Cross).Adjacent_Track :=
+            Track.Diamond_End_Array (Left_Cross).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Left_Cross));
-            if Length (Track.Diamond_End_Array (Left_Cross).Adjacent_Track)
-              > 0 then
+            if Length (Track.Diamond_End_Array (Left_Cross).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Left_Cross)'Length = 1 then
-                  Track.Diamond_End_Array (Left_Cross).Adjacent_End :=
+                  Track.Diamond_End_Array (Left_Cross).Adjacent.Track_End :=
                     First_Character (Get_Value (Adjacent_End_Left_Cross));
                else
                   raise Data_Error with
@@ -281,12 +285,12 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Right_Cross";
             end if; -- Get_Value (This_End_Right_Cross)'Length = 1
-            Track.Diamond_End_Array (Right_Cross).Adjacent_Track :=
+            Track.Diamond_End_Array (Right_Cross).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Right_Cross));
-            if Length (Track.Diamond_End_Array (Right_Cross).Adjacent_Track)
-              > 0 then
+            if Length (Track.Diamond_End_Array (Right_Cross).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Right_Cross)'Length = 1 then
-                  Track.Diamond_End_Array (Right_Cross).Adjacent_End :=
+                  Track.Diamond_End_Array (Right_Cross).Adjacent.Track_End :=
                     First_Character (Get_Value (Adjacent_End_Right_Cross));
                else
                   raise Data_Error with
@@ -297,6 +301,7 @@ package body Get_Data is
               Metres'Value (Get_Value (Length_Right_Cross));
             Track.Diamond_End_Array (Right_Cross).Is_Clear :=
               Boolean'Value (Get_Value (Is_Clear_Right_Cross));
+            Track_Stores.Append (Track_Store, Track);
          exception
             when E: others =>
                Put_Line ("Row:" & Row_Number'Image & " > " & Exception_Name (E)
@@ -356,13 +361,14 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Left_Straight";
             end if; -- Get_Value (This_End_Left_Straight)'Length = 1
-            Track.Switch_Diamond_End_Array (Left_Straight).Adjacent_Track :=
-              To_Unbounded_String (Get_Value (Adjacent_Track_Left_Straight));
-            if Length (Track.Switch_Diamond_End_Array (Left_Straight).
-                         Adjacent_Track) > 0 then
+            Track.Switch_Diamond_End_Array (Left_Straight).Adjacent.Track_Name
+              := To_Unbounded_String (Get_Value (Adjacent_Track_Left_Straight));
+            if Length (Track.Switch_Diamond_End_Array (Left_Straight).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Left_Straight)'Length = 1 then
-                  Track.Switch_Diamond_End_Array (Left_Straight).Adjacent_End :=
-                    First_Character (Get_Value (Adjacent_End_Left_Straight));
+                  Track.Switch_Diamond_End_Array (Left_Straight).Adjacent.
+                    Track_End :=
+                      First_Character (Get_Value (Adjacent_End_Left_Straight));
                else
                   raise Data_Error with
                     "Invalid data for Adjacent_End_Left_Straight";
@@ -379,13 +385,15 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Right_Straight";
             end if; -- Get_Value (This_End_Right_Straight)'Length = 1
-            Track.Switch_Diamond_End_Array (Right_Straight).Adjacent_Track :=
-              To_Unbounded_String (Get_Value (Adjacent_Track_Right_Straight));
-            if Length (Track.Switch_Diamond_End_Array (Right_Straight).
-                         Adjacent_Track) > 0 then
+            Track.Switch_Diamond_End_Array (Right_Straight).Adjacent.Track_Name
+              :=
+                To_Unbounded_String (Get_Value (Adjacent_Track_Right_Straight));
+            if Length (Track.Switch_Diamond_End_Array (Right_Straight).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Right_Straight)'Length = 1 then
-                  Track.Switch_Diamond_End_Array (Right_Straight).Adjacent_End
-                    := First_Character (Get_Value (Adjacent_End_Right_Straight));
+                  Track.Switch_Diamond_End_Array (Right_Straight).Adjacent.
+                    Track_End :=
+                      First_Character (Get_Value (Adjacent_End_Right_Straight));
                else
                   raise Data_Error with
                     "Invalid data for Adjacent_End_Right_Straight";
@@ -402,13 +410,13 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Left_Cross";
             end if; -- Get_Value (This_End_Left_Cross)'Length = 1
-            Track.Switch_Diamond_End_Array (Left_Cross).Adjacent_Track :=
+            Track.Switch_Diamond_End_Array (Left_Cross).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Left_Cross));
-            if Length (Track.Switch_Diamond_End_Array (Left_Cross).
-                         Adjacent_Track) > 0 then
+            if Length (Track.Switch_Diamond_End_Array (Left_Cross).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Left_Cross)'Length = 1 then
-                  Track.Switch_Diamond_End_Array (Left_Cross).Adjacent_End :=
-                    First_Character (Get_Value (Adjacent_End_Left_Cross));
+                  Track.Switch_Diamond_End_Array (Left_Cross).Adjacent.Track_End
+                    := First_Character (Get_Value (Adjacent_End_Left_Cross));
                else
                   raise Data_Error with
                     "Invalid data for Adjacent_End_Left_Cross";
@@ -425,13 +433,14 @@ package body Get_Data is
             else
                raise Data_Error with "Invalid data for This_End_Right_Cross";
             end if; -- Get_Value (This_End_Right_Cross)'Length = 1
-            Track.Switch_Diamond_End_Array (Right_Cross).Adjacent_Track :=
+            Track.Switch_Diamond_End_Array (Right_Cross).Adjacent.Track_Name :=
               To_Unbounded_String (Get_Value (Adjacent_Track_Right_Cross));
-            if Length (Track.Switch_Diamond_End_Array (Right_Cross).
-                         Adjacent_Track) > 0 then
+            if Length (Track.Switch_Diamond_End_Array (Right_Cross).Adjacent.
+                         Track_Name) > 0 then
                if Get_Value (Adjacent_End_Right_Cross)'Length = 1 then
-                  Track.Switch_Diamond_End_Array (Right_Cross).Adjacent_End :=
-                    First_Character (Get_Value (Adjacent_End_Right_Cross));
+                  Track.Switch_Diamond_End_Array (Right_Cross).Adjacent.
+                    Track_End :=
+                      First_Character (Get_Value (Adjacent_End_Right_Cross));
                else
                   raise Data_Error with
                     "Invalid data for Adjacent_End_Right_Cross";
@@ -441,6 +450,7 @@ package body Get_Data is
               Metres'Value (Get_Value (Length_Right_Cross));
             Track.Switch_Diamond_End_Array (Right_Cross).Is_Clear :=
               Boolean'Value (Get_Value (Is_Clear_Right_Cross));
+            Track_Stores.Append (Track_Store, Track);
          exception
             when E: others =>
                Put_Line ("Row:" & Row_Number'Image & " > " & Exception_Name (E)

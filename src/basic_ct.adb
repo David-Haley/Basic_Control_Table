@@ -5,7 +5,7 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 08/04/2023
+-- Last Edit : 09/04/2023
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Text_IO.Unbounded_IO; use Ada.Text_IO.Unbounded_IO;
@@ -26,7 +26,7 @@ procedure Basic_Ct is
    Output_File : File_Type;
 
 begin
-   Put_Line ("Basic Control Table 20230402");
+   Put_Line ("Basic Control Table 20230409");
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);

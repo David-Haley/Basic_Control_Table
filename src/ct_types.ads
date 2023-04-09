@@ -2,8 +2,10 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 08/04/2023
--- 20230408 : Track_Names  and Route_Names made subtypes;
+-- Last Edit : 09/04/2023
+-- 20230409 : for adjacent track linkage Track_Name and Track_End consolidated
+-- into Track_Keys.
+-- 20230408 : Track_Names  and Route_Names made subtypes.
 -- 20230402 : In signals Replacement_Track type becomes Track_Keys.
 -- Subtype Main_Route_Classes added.
 -- 20230328 : Correction of spelling to Entrance_End.
@@ -24,6 +26,15 @@ package CT_Types is
    -- N.B limits tracks to having no more than 26 ends this implies that a
    -- single logical track can contain no more than 8 sets of points.
 
+   type Track_Keys is record
+      Track_Name : Track_Names;
+      Track_End : Track_Ends;
+   end record; -- Track_Keys;
+
+   function "<" (Left, Right : Track_Keys) return Boolean;
+
+   Null_Link : constant Track_Keys := (Null_Unbounded_String, 'z');
+
    type Metres is new Natural;
    Minimum_Track_Length : constant Metres := 15;
 
@@ -32,8 +43,8 @@ package CT_Types is
      Static_Predicate => Point_Ends in 'A' .. 'Z';
 
    type End_Elements is record
-      Adjacent_Track : Track_Names := Null_Unbounded_String;
-      This_End, Adjacent_End : Track_Ends := 'z';
+      This_End : Track_Ends := 'z';
+      Adjacent : Track_Keys := Null_Link;
       Length : Metres := 0; -- Measured from TOS or centre of diamond.
       Is_Clear : Boolean := True;
    end record; -- End_Elements
@@ -51,10 +62,8 @@ package CT_Types is
       Track_Name : Track_Names;
       case Track_Type is
       when Plain =>
-         Adjacent_Left_Track, Adjacent_Right_Track : Track_Names :=
-           Null_Unbounded_String;
-         Left_End, Adjacent_Right_End : Track_Ends := 'z';
-         Right_End, Adjacent_Left_End : Track_Ends := 'z';
+         Left_End, Right_End : Track_Ends := 'z';
+         Adjacent_Left, Adjacent_Right : Track_Keys := Null_Link;
          Length : Metres := 0;
       when Points =>
          Points_Number : Point_Numbers;
@@ -86,13 +95,6 @@ package CT_Types is
 
    package Track_Stores is new
      Ada.Containers.Indefinite_Vectors (Track_Indices, Tracks);
-
-   type Track_Keys is record
-      Track_Name : Track_Names;
-      Track_End : Track_Ends;
-   end record; -- Track_Keys;
-
-   function "<" (Left, Right : Track_Keys) return Boolean;
 
    package Track_Dictionaries is new
      Ada.Containers.Ordered_Maps (Track_Keys, Track_Indices);
