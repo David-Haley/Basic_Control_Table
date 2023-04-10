@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 25/03/2023
--- Last Edit : 09/04/2023
+-- Last Edit : 10/04/2023
+-- 20230410 : Corrected reading of points swing node data.
 -- 20230409 : for adjacent track linkage Track_Name and Track_End consolidated
 -- into Track_Keys, sall to Append was missing from Diamond and Switch_Diamond.
 -- 20230408 : Correction of reading single characters.
@@ -105,6 +106,8 @@ package body Get_Data is
                else
                   raise Data_Error with "Invalid data for Points_End";
                end if; -- Get_Value (Points_End)'Length = 1
+               Track.Has_Swing_Nose :=
+                 Boolean'Value (Get_Value(Has_Swing_Nose));
                if Track.Has_Swing_Nose then
                   if Get_Value (Swing_Nose_End)'Length = 1 then
                      Track.Swing_Nose_End :=

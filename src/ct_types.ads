@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 09/04/2023
+-- Last Edit : 10/04/2023
+-- 20230416 : Points data structures added;
 -- 20230409 : for adjacent track linkage Track_Name and Track_End consolidated
 -- into Track_Keys.
 -- 20230408 : Track_Names  and Route_Names made subtypes.
@@ -15,6 +16,7 @@ with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Containers.Ordered_Maps;
+with Ada.Containers.Ordered_Sets;
 
 package CT_Types is
 
@@ -139,5 +141,21 @@ package CT_Types is
 
    package Route_Maps is new
      Ada.Containers.Ordered_Maps (Route_Names, Sub_Route_Lists.Vector);
+
+   type Point_Lies is (N, R, Undefined);
+
+   package Point_End_Sets is new Ada.Containers.Ordered_Sets (Point_Ends);
+
+   type Point_Details is record
+      Point_Number : Point_Numbers;
+      In_Route_Ends : Point_End_Sets.Set := Point_End_Sets.Empty_Set;
+      Required_Lie : Point_Lies := Undefined;
+      Last_Holding_Track : Track_Names := Null_Unbounded_String;
+   end record; -- Point_Details
+
+   subtype Point_Indices is Positive;
+
+   package Point_Lists is new
+     Ada.Containers.Vectors (Point_Indices, Point_Details);
 
 end CT_Types;

@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 27/03/2023
+-- Last Edit : 10/04/2023
+-- 20230410 : Building of points data added.
 
 with CT_Types; use CT_Types;
 
@@ -26,5 +27,13 @@ package Build_Structures is
    -- Builds a list of all the in-route tracks forming a route starting from
    -- the entrance signal and ending with the track before the exit signal
    -- replacement track.
+
+   procedure Build (Track_Store : in Track_Stores.Vector;
+                    Track_Dictionary : in Track_Dictionaries.Map;
+                    Sub_Route_List : in Sub_Route_Lists.Vector;
+                    Point_List : out Point_Lists.Vector);
+   -- Builds the points related data for a single route as defined by the
+   -- Sub_Route list. Each points number should appear once in the list even if
+   -- another set of points intervenes, may be possible for remote trap points.
 
 end Build_Structures;

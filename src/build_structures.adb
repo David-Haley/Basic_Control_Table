@@ -2,13 +2,15 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 09/04/2023
+-- Last Edit : 10/04/2023
+-- 20230410 : Building of points data added.
 -- 20230409 : Track linkage verification added.
 -- 20230408 : Context Ada.Strings.Unbounded added.
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers; use Ada.Containers;
+with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Ordered_Sets;
 with Ada.Exceptions; use Ada.Exceptions;
 
@@ -63,8 +65,8 @@ package body Build_Structures is
          Current_End, Adjacent_End, Back_Link_Target : Track_Keys;
 
          function Find_Adjacent (Track_Store : in Track_Stores.Vector;
-                                    Track_Dictionary : in Track_Dictionaries.Map;
-                                    Link : in Track_Keys) return Track_Keys is
+                                 Track_Dictionary : in Track_Dictionaries.Map;
+                                 Link : in Track_Keys) return Track_Keys is
 
             Track : Tracks := Track_Store (Track_Dictionary (Link));
             Result : Track_Keys := Null_Link; -- default if no match found
@@ -583,6 +585,208 @@ package body Build_Structures is
               To_String (Key (R));
          end if; -- Found
       end loop; -- R in Iterate (Route_Store)
+   end Build;
+
+   procedure Build (Track_Store : in Track_Stores.Vector;
+                    Track_Dictionary : in Track_Dictionaries.Map;
+                    Sub_Route_List : in Sub_Route_Lists.Vector;
+                    Point_List : out Point_Lists.Vector) is
+
+      -- Builds the points related data for a single route as defined by the
+      -- Sub_Route list. Each points number should appear once in the list even
+      -- if another set of points intervenes, may be possible for remote trap
+      -- points.
+
+      use Track_Stores;
+      use Track_Dictionaries;
+      use Sub_Route_Lists;
+      use Point_Lists;
+      use Point_End_Sets;
+
+      package Points_Dictionaries is new
+        Ada.Containers.Ordered_Maps (Point_Numbers, Point_Indices);
+      use Points_Dictionaries;
+
+      procedure Add_Point (Point_Number : in Point_Numbers;
+                           Point_List : in out Point_Lists.Vector;
+                           Points_Dictionary : in out Points_Dictionaries.Map)
+      is
+
+         -- Creates an initialiesed entry in the points list.
+
+         Point_Detail : Point_Details;
+
+      begin -- Add_Point
+         Point_Detail.Point_Number := Point_Number;
+         Append (Point_List, Point_Detail);
+         include (Points_Dictionary, Point_Number, Last_Index (Point_List));
+      end Add_Point;
+
+      Points_Dictionary : Points_Dictionaries.Map :=
+        Points_Dictionaries.Empty_Map;
+      Ti : Track_Indices;
+      Pi : Point_Indices;
+
+   begin -- Build
+      Clear (Point_List);
+      for S in Iterate (Sub_Route_List) loop
+         Ti := Track_Dictionary ((Sub_Route_List (S).Track_Name,
+                                 Sub_Route_List (S).Entrance_End));
+         if Track_Store (Ti).Track_Type = Points then
+            declare -- Points track declaration block
+               Track : Tracks renames Track_Store (Ti);
+            begin
+               if not Contains (Points_Dictionary, Track.Points_Number) then
+                  Add_Point (Track.Points_Number, Point_List,
+                             Points_Dictionary);
+               elsif Track.Is_Single_Ended then
+                  raise Data_Error with "Points " & Track.Points_Number'Img &
+                    " defined as single ended and second instance found at " &
+                    To_String (Sub_Route_List (S).Track_Name) &
+                    Sub_Route_List (S).Entrance_End &
+                    Sub_Route_List (S).Exit_End;
+               end if; -- not Contains (Points_Dictionary, Track.Points_Number)
+               Pi := Points_Dictionary (Track.Points_Number);
+               Point_List (Pi).Last_Holding_Track := Track.Track_Name;
+               if (Track.Point_End_Array (Facing).This_End =
+                     Sub_Route_List (S).Entrance_End and
+                     Track.Point_End_Array (Straight).This_End =
+                     Sub_Route_List (S).Exit_End) or
+                 (Track.Point_End_Array (Facing).This_End =
+                      Sub_Route_List (S).Exit_End and
+                      Track.Point_End_Array (Straight).This_End =
+                      Sub_Route_List (S).Entrance_End) then
+                  -- Using straignt lie
+                  if Track.Normal_Is_Straight then
+                     if Point_List (Pi).Required_Lie = Undefined then
+                        Point_List (Pi).Required_Lie := N;
+                     elsif Point_List (Pi).Required_Lie = R then
+                        raise Program_Error with "Subroute " &
+                          To_String (Sub_Route_List (S).Track_Name) &
+                          Sub_Route_List (S).Entrance_End &
+                          Sub_Route_List (S).Exit_End &
+                          " attempting to reset points lie N straight";
+                     end if; -- Point_List (Pi).Required_Lie = Undefined
+                  else
+                     if Point_List (Pi).Required_Lie = Undefined then
+                        Point_List (Pi).Required_Lie := R;
+                     elsif Point_List (Pi).Required_Lie = N then
+                        raise Program_Error with "Subroute " &
+                          To_String (Sub_Route_List (S).Track_Name) &
+                          Sub_Route_List (S).Entrance_End &
+                          Sub_Route_List (S).Exit_End &
+                          " attempting to reset points lie R straight";
+                     end if; -- Point_List (Pi).Required_Lie = Undefined
+                  end if; -- Track.Normal_Is_Straight
+               elsif (Track.Point_End_Array (Facing).This_End =
+                        Sub_Route_List (S).Entrance_End and
+                        Track.Point_End_Array (Divergent).This_End =
+                        Sub_Route_List (S).Exit_End) or
+                 (Track.Point_End_Array (Facing).This_End =
+                      Sub_Route_List (S).Exit_End and
+                      Track.Point_End_Array (Divergent).This_End =
+                      Sub_Route_List (S).Entrance_End) then
+                  -- Using Divergent lie
+                  if Track.Normal_Is_Straight then
+                     if Point_List (Pi).Required_Lie = Undefined then
+                        Point_List (Pi).Required_Lie := R;
+                     elsif Point_List (Pi).Required_Lie = N then
+                        raise Program_Error with "Subroute " &
+                          To_String (Sub_Route_List (S).Track_Name) &
+                          Sub_Route_List (S).Entrance_End &
+                          Sub_Route_List (S).Exit_End &
+                          " attempting to reset points lie R divergent";
+                     end if; -- Point_List (Pi).Reuqired_Lie = Undefined
+                  else
+                     if Point_List (Pi).Required_Lie = Undefined then
+                        Point_List (Pi).Required_Lie := N;
+                     elsif Point_List (Pi).Required_Lie = R then
+                        raise Program_Error with "Subroute " &
+                          To_String (Sub_Route_List (S).Track_Name) &
+                          Sub_Route_List (S).Entrance_End &
+                          Sub_Route_List (S).Exit_End &
+                          " attempting to reset points lie N divergent";
+                     end if; -- Point_List (Pi).Required_Lie = Undefined
+                  end if; -- Track.Normal_Is_Straight
+               else
+                  raise Program_Error with "Subroute " &
+                    To_String (Sub_Route_List (S).Track_Name) &
+                    Sub_Route_List (S).Entrance_End &
+                    Sub_Route_List (S).Exit_End &
+                    " does not represent a valid path through points" &
+                    Point_List (Pi).Point_Number'Img;
+               end if; -- (Track.Point_End_Array (Facing).This_End = ...
+               Include (Point_List (Pi).In_Route_Ends, Track.Points_End);
+               if not Track.Is_Single_Ended and Track.Has_Swing_Nose then
+                  Include (Point_List (Pi).In_Route_Ends, Track.Swing_Nose_End);
+               end if; -- not Track.Is_Single_Ended and Track.Has_Swing_Nose
+            end; -- Points track declaration block
+         elsif Track_Store (Ti).Track_Type = Switch_Diamond then
+            declare -- Switch Diamond track declaration block
+               Track : Tracks renames Track_Store (Ti);
+            begin
+               if not Contains (Points_Dictionary, Track.Diamond_Number) then
+                  Add_Point (Track.Diamond_Number, Point_List,
+                             Points_Dictionary);
+               end if; -- not Contains (Points_Dictionary, Track.Points_Number)
+               Pi := Points_Dictionary (Track.Diamond_Number);
+               Point_List (Pi).Last_Holding_Track := Track.Track_Name;
+               if (Track.Switch_Diamond_End_Array (Left_Straight).This_End =
+                     Sub_Route_List (S).Entrance_End and
+                     Track.Switch_Diamond_End_Array (Right_Straight).This_End =
+                     Sub_Route_List (S).Exit_End) or
+                 (Track.Switch_Diamond_End_Array (Left_Straight).This_End =
+                      Sub_Route_List (S).Exit_End and
+                      Track.Switch_Diamond_End_Array (Right_Straight).This_End =
+                      Sub_Route_List (S).Entrance_End) then
+                  -- Straight is defined as Normal lie
+                  if Point_List (Pi).Required_Lie = Undefined then
+                     Point_List (Pi).Required_Lie := N;
+                  elsif Point_List (Pi).Required_Lie = R then
+                     raise Program_Error with "Subroute " &
+                       To_String (Sub_Route_List (S).Track_Name) &
+                       Sub_Route_List (S).Entrance_End &
+                       Sub_Route_List (S).Exit_End &
+                       " attempting to reset points lie N straight";
+                  end if; -- Point_List (Pi).Required_Lie = Undefined
+               elsif (Track.Switch_Diamond_End_Array (Left_Cross).This_End =
+                        Sub_Route_List (S).Entrance_End and
+                        Track.Switch_Diamond_End_Array (Right_Cross).This_End =
+                        Sub_Route_List (S).Exit_End) or
+                 (Track.Switch_Diamond_End_Array (Left_Cross).This_End =
+                      Sub_Route_List (S).Exit_End and
+                      Track.Switch_Diamond_End_Array (Right_Cross).This_End =
+                      Sub_Route_List (S).Entrance_End) then
+                  -- Cross is defined as Cross lie
+                  if Point_List (Pi).Required_Lie = Undefined then
+                     Point_List (Pi).Required_Lie := R;
+                  elsif Point_List (Pi).Required_Lie = N then
+                     raise Program_Error with "Subroute " &
+                       To_String (Sub_Route_List (S).Track_Name) &
+                       Sub_Route_List (S).Entrance_End &
+                       Sub_Route_List (S).Exit_End &
+                       " attempting to reset points lie R cross";
+                  end if; -- Point_List (Pi).Required_Lie = Undefined
+               else
+                  raise Program_Error with "Subroute " &
+                    To_String (Sub_Route_List (S).Track_Name) &
+                    Sub_Route_List (S).Entrance_End &
+                    Sub_Route_List (S).Exit_End &
+                    " does not represent a valid path through switch diamond" &
+                    Point_List (Pi).Point_Number'Img;
+               end if; -- (Track.Switch_Diamond_End_Array (Left_Straight) ...
+               Include (Point_List (Pi).In_Route_Ends, Track.Diamond_End);
+               if Track.Has_Left_Swing_Nose then
+                  Include (Point_List (Pi).In_Route_Ends,
+                           Track.Left_Swing_Nose_End);
+               end if; -- Track.Has_Left_Swing_Nose
+               if Track.Has_Right_Swing_Nose then
+                  Include (Point_List (Pi).In_Route_Ends,
+                           Track.Right_Swing_Nose_End);
+               end if; -- Track.Has_Left_Swing_Nose
+            end; -- Points track declaration block
+         end if; -- Track_Store (Ti).Track_Type = Points
+      end loop; -- Switch Diamond (Sub_Route_List)
    end Build;
 
 end Build_Structures;
