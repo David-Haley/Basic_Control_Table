@@ -6,6 +6,7 @@
 -- Author    : David Haley
 -- Created   : 24/03/2023
 -- Last Edit : 09/04/2023
+-- 20230412 : Points Route Holding added to listing.
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Text_IO.Unbounded_IO; use Ada.Text_IO.Unbounded_IO;
@@ -73,34 +74,29 @@ procedure Basic_Ct is
    procedure Tracks_Clear (Output_File : in out File_Type;
                            Route : in Route_Names;
                            Route_Store : In Route_Stores.Map;
-                           Route_Map : in Route_Maps.Map) is
+                           Track_List : in Track_Lists.List) is
 
-      -- Lists inroute tracks, if more than one consecutive subroute is
-      -- has the same Track_Name the track name appears once.
-      -- Currently will not remove last inroute track from call on route.
+      -- Reports inroute tracks required clear.
 
-      Previous_Track : Track_Names := Null_Unbounded_String;
+      use track_lists;
 
    begin -- Tracks_Clear
       Put_Line (Output_File, "Aspect requires:-");
-      Put (Output_File, "Tracks Clear: ");
+      Put (Output_File, "Tracks Clear:");
       if Route_Store (Route).Route_Class /= Shunt then
-         for S in Iterate (Route_Map (Route)) loop
-            if Route_Map (Route) (S).Track_Name /= Previous_Track then
-               Previous_Track := Route_Map (Route) (S).Track_Name;
-               Put (Output_File, Route_Map (Route) (S).Track_Name);
-               if S /= Last (Route_Map (Route)) then
-                  Put (Output_File, ' ');
-               end if; -- S /= Last (Route_Map (Route))
-            end if; -- Route_Map (Route) (S).Track_Name /= Previous_Track
-         end loop; -- S in Iterate (Route_Map (Route))
+         for T in Iterate (Track_List) loop
+            if T /= Last (Track_List) or else
+              Route_Store (Route).Route_Class /= Call_On then
+               Put (Output_File, " " & Track_List (T));
+            end if; -- T /= Last (Track_List)
+         end loop; -- T in Iterate (Track_List)
       end if; -- Route_Store (Route).Class /= Shunt
       New_Line (Output_File);
       Put_Line (Output_File, Dotted_Line);
    end Tracks_Clear;
 
    procedure Points_Detection (Output_File : in out File_Type;
-                               Point_List : in Point_Lists.Vector) is
+                               Point_List : in Point_Lists.List) is
 
       use Point_Lists;
       use Point_End_Sets;
@@ -132,6 +128,31 @@ procedure Basic_Ct is
       end loop; -- Lie in Point_Lies range N .. R
    end Points_Detection;
 
+   procedure Route_Holding_Points (Output_File : in out File_Type;
+                                   Track_List : in Track_Lists.List;
+                                   Point_List : in Point_Lists.List) is
+
+      use Track_Lists;
+      use Point_Lists;
+
+      Tc : Track_Lists.Cursor;
+
+   begin -- Route_Holding_Points
+      Put_Line (Output_File, "Points route held by tracks occupied:-");
+      for P in Iterate (Point_List) loop
+         Put (Output_File, Point_List (P).Point_Number'img & " " &
+                Point_List (P).Required_Lie'Img & " :");
+         Tc := First (Track_List);
+         loop -- until last holding track
+            Put (Output_File, " " & Track_List (Tc));
+            exit when Track_List (Tc) = Point_List (P).Last_Holding_Track;
+            Next (Tc);
+         end loop; -- until last holding track
+         New_Line (Output_File);
+      end loop; -- P in Iterate (Point_List)
+      Put_Line (Output_File, Solid_Line);
+   end Route_Holding_Points;
+
    Track_Store : Track_Stores.Vector;
    Signal_Store : Signal_Stores.Map;
    Route_Store : Route_Stores.Map;
@@ -139,10 +160,11 @@ procedure Basic_Ct is
    Sub_Route_to_Signal_Map : Sub_Route_to_Signal_Maps.Map;
    Route_Map : Route_Maps.Map;
    Output_File : File_Type;
-   Point_List : Point_Lists.Vector;
+   Track_List : Track_Lists.List;
+   Point_List : Point_Lists.List;
 
 begin
-   Put_Line ("Basic Control Table 20230410");
+   Put_Line ("Basic Control Table 20230412");
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);
@@ -154,9 +176,11 @@ begin
       Create (Output_File, Out_File, Compose (Output_Path, To_String (Key (R)),
               "txt"));
       Header (Output_File, Key (R), Route_Store);
-      Tracks_Clear (Output_File, Key (R), Route_Store, Route_Map);
+      Build (Route_Map (Key (R)), Track_List);
+      Tracks_Clear (Output_File, Key (R), Route_Store, Track_List);
       Build (Track_Store, Track_Dictionary, Route_Map (Key (R)), Point_List);
       Points_Detection (Output_File, Point_List);
+      Route_Holding_Points (Output_File, Track_List, Point_List);
       Put_Line (Output_File, "End of text for " & Key (R));
       Close (Output_File);
    end loop; -- R in Iterate (Route_Store)
