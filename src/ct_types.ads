@@ -2,7 +2,9 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 12/04/2023
+-- Last Edit : 23/04/2023
+-- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
+-- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
 -- 20230412 : Track_Lists added and Point_List made a linked list;
 -- 20230416 : Points data structures added;
 -- 20230409 : for adjacent track linkage Track_Name and Track_End consolidated
@@ -16,7 +18,7 @@
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Vectors;
-with Ada.Containers.Indefinite_Vectors;
+with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Ordered_Sets;
 
@@ -95,15 +97,17 @@ package CT_Types is
       end case; -- Track_Type
    end record; -- Tracks
 
-   subtype Track_Indices is Positive;
-
    package Track_Stores is new
-     Ada.Containers.Indefinite_Vectors (Track_Indices, Tracks);
+     Ada.Containers.Indefinite_Doubly_Linked_Lists (Tracks);
+   use Track_Stores;
+
+   --  function "=" (Left, Right : Track_Stores.Cursor) return Boolean;
+   --  -- Required for Track_Dictionaries
 
    package Track_Dictionaries is new
-     Ada.Containers.Ordered_Maps (Track_Keys, Track_Indices);
+     Ada.Containers.Ordered_Maps (Track_Keys, Track_Stores.Cursor);
 
-   type Signal_Numbers is new Positive;
+   subtype Signal_Numbers is Unbounded_String;
 
    type Signals is record
       Is_Main, Is_Shunt : Boolean;
@@ -133,16 +137,12 @@ package CT_Types is
       Entrance_End, Exit_End : Track_Ends;
    end record; -- Sub_Routes
 
-   subtype Sub_Route_Indices is Positive;
-
    package Sub_Route_Lists is new
-     Ada.Containers.Vectors (Sub_Route_Indices, Sub_Routes);
-
-   function "=" (Left, Right : Sub_Route_Lists.Vector) return Boolean;
-   -- Required for Route_Maps declaration
+     Ada.Containers.Doubly_Linked_Lists (Sub_Routes);
+   use Sub_Route_Lists;
 
    package Route_Maps is new
-     Ada.Containers.Ordered_Maps (Route_Names, Sub_Route_Lists.Vector);
+     Ada.Containers.Ordered_Maps (Route_Names, Sub_Route_Lists.List);
 
    package Track_Lists is new Ada.Containers.Doubly_Linked_Lists (Track_Names);
 

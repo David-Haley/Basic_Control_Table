@@ -2,7 +2,10 @@
 
 -- Author    : David Haley
 -- Created   : 25/03/2023
--- Last Edit : 10/04/2023
+-- Last Edit : 23/04/2023
+-- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
+-- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
+-- Check that Signal_Numbers and Routes are unique;
 -- 20230410 : Corrected reading of points swing node data.
 -- 20230409 : for adjacent track linkage Track_Name and Track_End consolidated
 -- into Track_Keys, sall to Append was missing from Diamond and Switch_Diamond.
@@ -17,7 +20,6 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Directories; use Ada.Directories;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
--- with Ada.Containers.Vectors;
 with DJH.Parse_CSV;
 with CT_Types; use CT_Types;
 with File_Heders; use File_Heders;
@@ -27,7 +29,7 @@ package body Get_Data is
    function First_Character (Str : in String) return Character is
       (Str (Str'First));
 
-   procedure Plain_Track (Track_Store : in out Track_Stores.Vector) is
+   procedure Plain_Track (Track_Store : in out Track_Stores.List) is
 
       package Tracks_CSV is new DJH.Parse_CSV (Track_Header);
       use Tracks_CSV;
@@ -82,7 +84,7 @@ package body Get_Data is
       Close_CSV;
    end Plain_Track;
 
-   procedure Points_Track (Track_Store : in out Track_Stores.Vector) is
+   procedure Points_Track (Track_Store : in out Track_Stores.List) is
 
       package Tracks_CSV is new DJH.Parse_CSV (Points_Header);
       use Tracks_CSV;
@@ -198,7 +200,7 @@ package body Get_Data is
       Close_CSV;
    end Points_Track;
 
-   procedure Diamond_Track (Track_Store : in out Track_Stores.Vector) is
+   procedure Diamond_Track (Track_Store : in out Track_Stores.List) is
 
       package Tracks_CSV is new DJH.Parse_CSV (Diamond_Header);
       use Tracks_CSV;
@@ -314,7 +316,7 @@ package body Get_Data is
       Close_CSV;
    end Diamond_Track;
 
-   procedure Switch_Diamond_Track (Track_Store : in out Track_Stores.Vector) is
+   procedure Switch_Diamond_Track (Track_Store : in out Track_Stores.List) is
 
       package Tracks_CSV is new DJH.Parse_CSV (Switch_Diamond_Header);
       use Tracks_CSV;
@@ -463,7 +465,7 @@ package body Get_Data is
       Close_CSV;
    end Switch_Diamond_Track;
 
-   procedure Get (Track_Store : out Track_Stores.Vector) is
+   procedure Get (Track_Store : out Track_Stores.List) is
 
    begin -- Get
       Track_Stores.Clear (Track_Store);
@@ -477,6 +479,7 @@ package body Get_Data is
 
       package Signals_CSV is new DJH.Parse_CSV (Signal_Header);
       use Signals_CSV;
+      use Signal_Stores;
 
       Signal : Signals;
 
@@ -497,10 +500,15 @@ package body Get_Data is
             else
                raise Data_Error with "invalid data for Entrence_End";
             end if; --  Get_Value (Entrance_End)'Length = 1
-            Signal_Stores.Include (Signal_Store,
-                                   Signal_Numbers'Value (
-                                     Get_Value (Signal_Number)),
-                                   Signal);
+            if Contains (Signal_Store,
+                         To_Unbounded_String (Get_Value (Signal_Number))) then
+               raise Data_Error with "Repeated signal number " &
+                 Get_Value (Signal_Number);
+            else
+               Insert (Signal_Store,
+                       To_Unbounded_String (Get_Value (Signal_Number)),
+                       Signal);
+            end if; -- Contains (Signal_Store, ...
          exception
             when E: others =>
                Put_Line ("Row:" & Row_Number'Image & " > " & Exception_Name (E)
@@ -512,10 +520,11 @@ package body Get_Data is
 
    procedure Get (Route_Store : out Route_Stores.Map) is
 
-      Route : Routes;
-
       package Route_CSV is new DJH.Parse_CSV (Route_Header);
       use Route_CSV;
+      use Route_Stores;
+
+      Route : Routes;
 
    begin -- Get
       Route_Stores.Clear (Route_Store);
@@ -525,12 +534,18 @@ package body Get_Data is
       while Next_Row loop
          begin -- record exception block
             Route.Entrance_Signal :=
-              Signal_Numbers'Value (Get_Value (Entrance_Signal));
-            Route.Exit_Signal := Signal_Numbers'Value (Get_Value (Exit_Signal));
+              To_Unbounded_String (Get_Value (Entrance_Signal));
+            Route.Exit_Signal := To_Unbounded_String (Get_Value (Exit_Signal));
             Route.Route_Class := Route_Classes'Value (Get_Value (Route_Class));
-            Route_Stores.Include (Route_Store,
-                                  To_Unbounded_String (Get_Value (Route_Name)),
-                                  Route);
+            if Contains (Route_Store,
+                         To_Unbounded_String (Get_Value (Route_Name))) then
+               raise Data_Error with "Repeated route name " &
+                 Get_Value (Route_Name);
+            else
+               Insert (Route_Store,
+                       To_Unbounded_String (Get_Value (Route_Name)),
+                       Route);
+            end if; -- Contains (Route_Store, ...
          exception
             when E: others =>
                Put_Line ("Row:" & Row_Number'Image & " > " & Exception_Name (E)

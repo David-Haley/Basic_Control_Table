@@ -2,7 +2,11 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 12/04/2023
+-- Last Edit : 23/04/2023
+-- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
+-- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
+-- Points route holding tracks extended to include next inroute track in
+-- Straight or Divergent ends are not clear, similarly for Switch_Diamond.
 -- 202304 : Building of Track_List added.
 -- 20230410 : Building of points data added.
 -- 20230409 : Track linkage verification added.
@@ -17,7 +21,7 @@ with Ada.Exceptions; use Ada.Exceptions;
 
 package body Build_Structures is
 
-   procedure Build (Track_Store : in Track_Stores.Vector;
+   procedure Build (Track_Store : in Track_Stores.List;
                     Track_Dictionary : out Track_Dictionaries.Map) is
 
       -- Builds an ordered list of all track entereces.
@@ -31,16 +35,15 @@ package body Build_Structures is
 
       begin -- Insert
          if Contains (Track_Dictionary, Track_Key) then
-            raise Data_Error with "At row " & To_Index (Tc)'Img &
-              " the combination of track name " &
+            raise Data_Error with "The combination of track name " &
               To_String (Track_Key.Track_Name) &
               " track end '" & Track_Key.Track_End & "' is repeated";
          else
-            Include (Track_Dictionary, Track_Key, To_Index (Tc));
+            Include (Track_Dictionary, Track_Key, Tc);
          end if; -- Insert
       end Insert;
 
-      procedure Verify_Links (Track_Store : in Track_Stores.Vector) is
+      procedure Verify_Links (Track_Store : in Track_Stores.List) is
 
          package Link_Sets is new Ada.Containers.Ordered_Sets (Track_Keys);
          use Link_Sets;
@@ -65,7 +68,7 @@ package body Build_Structures is
          Link_Set : Link_Sets.Set := Link_Sets.Empty_Set;
          Current_End, Adjacent_End, Back_Link_Target : Track_Keys;
 
-         function Find_Adjacent (Track_Store : in Track_Stores.Vector;
+         function Find_Adjacent (Track_Store : in Track_Stores.List;
                                  Track_Dictionary : in Track_Dictionaries.Map;
                                  Link : in Track_Keys) return Track_Keys is
 
@@ -239,8 +242,9 @@ package body Build_Structures is
          begin -- Include exception block
             Track_Key := Signal_Store (Sc).Replacement_Track;
             if Contains (Sub_Route_to_Signal_Map, Track_Key) then
-               raise Data_Error with "Duplicate signal" & Key (Sc)'img & " at "
-                 & Signal_Store (Sc).Replacement_Track.Track_End & " end of " &
+               raise Data_Error with "Duplicate signal" & To_String (Key (Sc)) &
+                 " at " & Signal_Store (Sc).Replacement_Track.Track_End &
+                 " end of " &
                  To_String (Signal_Store (Sc).Replacement_Track.Track_Name) &
                  " track";
             else
@@ -258,7 +262,7 @@ package body Build_Structures is
       end if; -- Errors_Detected
    end Build;
 
-   procedure Build (Track_Store : in Track_Stores.Vector;
+   procedure Build (Track_Store : in Track_Stores.List;
                     Signal_Store : in Signal_Stores.Map;
                     Route_Store : in Route_Stores.Map;
                     Track_Dictionary : in Track_Dictionaries.Map;
@@ -288,35 +292,35 @@ package body Build_Structures is
          for R in Iterate (Route_Store) loop
             if not Contains (Signal_Store, Route_Store (R).Entrance_Signal) then
                raise Data_Error with "Route " & To_String (Key (R)) &
-                 " entrance signal" & Route_Store (R).Entrance_Signal'Img &
-                 " not defined.";
+                 " entrance signal" &
+                 To_String (Route_Store (R).Entrance_Signal) & " not defined.";
             elsif Route_Store (R).Route_Class in Main_Route_Classes and
               not Signal_Store (Route_Store (R).Entrance_Signal).Is_Main then
                raise Data_Error with "Entrance signal" &
-                 Route_Store (R).Entrance_Signal'Img & " of route " &
+                 To_String (Route_Store (R).Entrance_Signal) & " of route " &
                  To_String (Key (R)) & "is not a main signal.";
             end if; -- not Contains (Signal_Store, Route_Store (R) ...
             if not Contains (Signal_Store, Route_Store (R).Exit_Signal) then
                raise Data_Error with "Route " & To_String (Key (R)) &
-                 " exit signal" & Route_Store (R).Exit_Signal'Img &
+                 " exit signal" & To_String (Route_Store (R).Exit_Signal) &
                  " not defined.";
             elsif Route_Store (R).Route_Class in Main_Route_Classes and
               not Signal_Store (Route_Store (R).Exit_Signal).Is_Main then
                raise Data_Error with "Exit signal" &
-                 Route_Store (R).Exit_Signal'Img & " of route " &
+                 To_String (Route_Store (R).Exit_Signal) & " of route " &
                  To_String (Key (R)) & "is not a main signal.";
             end if; -- not Contains (Signal_Store, Route_Store (R).Exit_Signal
          end loop; -- R in Iterate (Route_Store)
         Put_Line ("Finished validating routes");
       end Validate_Routes;
 
-      function Find_Exit (Track_Store : in Track_Stores.Vector;
+      function Find_Exit (Track_Store : in Track_Stores.List;
                           Track_Dictionary : in Track_Dictionaries.Map;
                           Track_Key : in Track_Keys)
-                             return Sub_Route_Lists.Vector is
+                             return Sub_Route_Lists.List is
 
          Track : Tracks := Track_Store (Track_Dictionary (Track_Key));
-         Result : Sub_Route_Lists.Vector := Sub_Route_Lists.Empty_Vector;
+         Result : Sub_Route_Lists.List := Sub_Route_Lists.Empty_List;
          Sub_Route : Sub_Routes;
 
       begin -- Find_Exit
@@ -412,14 +416,14 @@ package body Build_Structures is
          return Result;
       end Find_Exit;
 
-      procedure Find_Route (Track_Store : in Track_Stores.Vector;
+      procedure Find_Route (Track_Store : in Track_Stores.List;
                             Track_Dictionary : in Track_Dictionaries.Map;
                             Route_End : in Track_Keys;
                             Is_Main : in Boolean;
                             Found : in out Boolean;
-                            Sub_Route_List : in out Sub_Route_Lists.Vector) is
+                            Sub_Route_List : in out Sub_Route_Lists.List) is
 
-         function Find_Next_Key (Track_Store : in Track_Stores.Vector;
+         function Find_Next_Key (Track_Store : in Track_Stores.List;
                                  Track_Dictionary : in Track_Dictionaries.Map;
                                  Sub_Route : in Sub_Routes) return Track_Keys is
 
@@ -509,7 +513,7 @@ package body Build_Structures is
 
          Current_Track_Key, Next_Track_Key : Track_Keys;
          Wrong_Exit : Boolean;
-         Test_List : Sub_Route_Lists.Vector;
+         Test_List : Sub_Route_Lists.List;
          Sc : Sub_Route_Lists.Cursor;
 
       begin -- Find_Route
@@ -553,7 +557,7 @@ package body Build_Structures is
       end Find_Route;
 
       Route_Entrance : Track_Keys;
-      Test_List, Sub_Route_List : Sub_Route_Lists.Vector;
+      Test_List, Sub_Route_List : Sub_Route_Lists.List;
       Tc : Sub_Route_Lists.Cursor;
       Is_Main : Boolean;
       Found : Boolean := False;
@@ -588,7 +592,7 @@ package body Build_Structures is
       end loop; -- R in Iterate (Route_Store)
    end Build;
 
-   procedure Build (Sub_Route_List : in Sub_Route_Lists.Vector;
+   procedure Build (Sub_Route_List : in Sub_Route_Lists.List;
                     Track_List : out Track_Lists.List) is
 
       -- Builds an ordered list of tracks inroute tracks. If multiple subroutes
@@ -609,9 +613,9 @@ package body Build_Structures is
       end loop; -- S in Iterate (Sub_Route_List)
    end Build;
 
-   procedure Build (Track_Store : in Track_Stores.Vector;
+   procedure Build (Track_Store : in Track_Stores.List;
                     Track_Dictionary : in Track_Dictionaries.Map;
-                    Sub_Route_List : in Sub_Route_Lists.Vector;
+                    Sub_Route_List : in Sub_Route_Lists.List;
                     Point_List : out Point_Lists.List) is
 
       -- Builds the points related data for a single route as defined by the
@@ -646,17 +650,17 @@ package body Build_Structures is
 
       Points_Dictionary : Points_Dictionaries.Map :=
         Points_Dictionaries.Empty_Map;
-      Ti : Track_Indices;
+      Tc : Track_Stores.Cursor;
       Pc : Point_Lists.Cursor;
 
    begin -- Build
       Clear (Point_List);
       for S in Iterate (Sub_Route_List) loop
-         Ti := Track_Dictionary ((Sub_Route_List (S).Track_Name,
+         Tc := Track_Dictionary ((Sub_Route_List (S).Track_Name,
                                  Sub_Route_List (S).Entrance_End));
-         if Track_Store (Ti).Track_Type = Points then
+         if Track_Store (Tc).Track_Type = Points then
             declare -- Points track declaration block
-               Track : Tracks renames Track_Store (Ti);
+               Track : Tracks renames Track_Store (Tc);
             begin
                if not Contains (Points_Dictionary, Track.Points_Number) then
                   Add_Point (Track.Points_Number, Point_List,
@@ -742,10 +746,22 @@ package body Build_Structures is
                if not Track.Is_Single_Ended and Track.Has_Swing_Nose then
                   Include (Point_List (Pc).In_Route_Ends, Track.Swing_Nose_End);
                end if; -- not Track.Is_Single_Ended and Track.Has_Swing_Nose
+               -- Check for an aditional fouling track
+               if Track.Point_End_Array (Straight).This_End =
+                 Sub_Route_List (S).Exit_End and then
+                 not Track.Point_End_Array (Straight).Is_Clear then
+                  Point_List (Pc).Last_Holding_Track :=
+                    Track.Point_End_Array (Straight).Adjacent.Track_Name;
+               elsif Track.Point_End_Array (Divergent).This_End =
+                 Sub_Route_List (S).Exit_End and then
+                 not Track.Point_End_Array (Divergent).Is_Clear then
+                  Point_List (Pc).Last_Holding_Track :=
+                    Track.Point_End_Array (Divergent).Adjacent.Track_Name;
+               end if; -- Track.Point_End_Array (Straight).This_End = ...
             end; -- Points track declaration block
-         elsif Track_Store (Ti).Track_Type = Switch_Diamond then
+         elsif Track_Store (Tc).Track_Type = Switch_Diamond then
             declare -- Switch Diamond track declaration block
-               Track : Tracks renames Track_Store (Ti);
+               Track : Tracks renames Track_Store (Tc);
             begin
                if not Contains (Points_Dictionary, Track.Diamond_Number) then
                   Add_Point (Track.Diamond_Number, Point_List,
@@ -806,8 +822,36 @@ package body Build_Structures is
                   Include (Point_List (Pc).In_Route_Ends,
                            Track.Right_Swing_Nose_End);
                end if; -- Track.Has_Left_Swing_Nose
+               -- Check for an aditional fouling track
+               if Track.Switch_Diamond_End_Array (Left_Straight).This_End =
+                 Sub_Route_List (S).Exit_End and then
+                 not Track.Switch_Diamond_End_Array (Left_Straight).Is_Clear
+               then
+                  Point_List (Pc).Last_Holding_Track :=
+                    Track.Switch_Diamond_End_Array (Left_Straight).Adjacent.
+                    Track_Name;
+               elsif Track.Switch_Diamond_End_Array (Left_Cross).This_End =
+                 Sub_Route_List (S).Exit_End and then
+                 not Track.Switch_Diamond_End_Array (Left_Cross).Is_Clear then
+                  Point_List (Pc).Last_Holding_Track :=
+                    Track.Switch_Diamond_End_Array (Left_Cross).Adjacent.
+                    Track_Name;
+               elsif Track.Switch_Diamond_End_Array (Right_Straight).This_End =
+                 Sub_Route_List (S).Exit_End and then
+                 not Track.Switch_Diamond_End_Array (Right_Straight).Is_Clear
+               then
+                  Point_List (Pc).Last_Holding_Track :=
+                    Track.Switch_Diamond_End_Array (Right_Straight).Adjacent.
+                    Track_Name;
+               elsif Track.Switch_Diamond_End_Array (Right_Cross).This_End =
+                 Sub_Route_List (S).Exit_End and then
+                 not Track.Switch_Diamond_End_Array (Right_Cross).Is_Clear then
+                  Point_List (Pc).Last_Holding_Track :=
+                    Track.Switch_Diamond_End_Array (Right_Cross).Adjacent.
+                    Track_Name;
+               end if; -- Track.Switch_Diamond_End_Array (Left_Straight) ...
             end; -- Points track declaration block
-         end if; -- Track_Store (Ti).Track_Type = Points
+         end if; -- Track_Store (Tc).Track_Type = Points
       end loop; -- Switch Diamond (Sub_Route_List)
    end Build;
 

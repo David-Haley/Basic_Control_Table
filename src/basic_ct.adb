@@ -5,7 +5,11 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 09/04/2023
+-- Last Edit : 23/04/2023
+-- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
+-- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
+-- Points route holding tracks extended to include next inroute track if
+-- Straight or Divergent ends are not clear, similarly for Switch_Diamond.
 -- 20230412 : Points Route Holding added to listing.
 
 with Ada.Text_IO; use Ada.Text_IO;
@@ -64,9 +68,9 @@ procedure Basic_Ct is
    begin -- Header
       Put_Line ("Writing CT for " & Route);
       Put_Line (Output_File, "Date: " & Date_String & "  Time: " & Time_String);
-      Put_Line (Output_File, "Route: " & Route & " from" &
-                  Route_Store (Route).Entrance_Signal'Img & " to" &
-                  Route_Store (Route).Exit_Signal'Img & " Route class " &
+      Put_Line (Output_File, "Route: " & Route & " from " &
+                  Route_Store (Route).Entrance_Signal & " to " &
+                  Route_Store (Route).Exit_Signal & " Route class " &
                   Route_Store (Route).Route_Class'Img);
       Put_Line (Output_File, Solid_Line);
    end Header;
@@ -153,7 +157,7 @@ procedure Basic_Ct is
       Put_Line (Output_File, Solid_Line);
    end Route_Holding_Points;
 
-   Track_Store : Track_Stores.Vector;
+   Track_Store : Track_Stores.List;
    Signal_Store : Signal_Stores.Map;
    Route_Store : Route_Stores.Map;
    Track_Dictionary : Track_Dictionaries.Map;
@@ -164,7 +168,7 @@ procedure Basic_Ct is
    Point_List : Point_Lists.List;
 
 begin
-   Put_Line ("Basic Control Table 20230412");
+   Put_Line ("Basic Control Table 20230423");
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);
