@@ -2,7 +2,8 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 23/04/2023
+-- Last Edit : 25/04/2023
+-- 20230425 : Route_Sets and Conflict_Maps added.
 -- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
 -- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
 -- 20230412 : Track_Lists added and Point_List made a linked list;
@@ -17,7 +18,6 @@
 
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers.Doubly_Linked_Lists;
-with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Ada.Containers.Ordered_Maps;
 with Ada.Containers.Ordered_Sets;
@@ -132,10 +132,15 @@ package CT_Types is
    package Route_Stores is new
      Ada.Containers.Ordered_Maps (Route_Names, Routes);
 
+   package Route_Sets is new Ada.Containers.Ordered_Sets (Route_Names);
+   use Route_Sets;
+
    type Sub_Routes is record
       Track_Name : Track_Names;
       Entrance_End, Exit_End : Track_Ends;
    end record; -- Sub_Routes
+
+   function "<" (Left, Right : Sub_Routes) return Boolean;
 
    package Sub_Route_Lists is new
      Ada.Containers.Doubly_Linked_Lists (Sub_Routes);
@@ -143,6 +148,9 @@ package CT_Types is
 
    package Route_Maps is new
      Ada.Containers.Ordered_Maps (Route_Names, Sub_Route_Lists.List);
+
+   package Conflict_Maps is new
+     Ada.Containers.Ordered_Maps (Sub_Routes, Route_Sets.Set);
 
    package Track_Lists is new Ada.Containers.Doubly_Linked_Lists (Track_Names);
 

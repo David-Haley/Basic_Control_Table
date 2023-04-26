@@ -2,8 +2,9 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 23/04/2023
--- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
+-- Last Edit : 25/04/2026
+-- Building of Conflict_Map added.
+-- 20230426 : Signal Numbers made a string to allow for a prefix nmenonic.
 -- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
 -- Points route holding tracks extended to include next inroute track in
 -- Straight or Divergent ends are not clear, similarly for Switch_Diamond.
@@ -853,6 +854,31 @@ package body Build_Structures is
             end; -- Points track declaration block
          end if; -- Track_Store (Tc).Track_Type = Points
       end loop; -- Switch Diamond (Sub_Route_List)
+   end Build;
+
+   procedure Build (Route_Map : in Route_Maps.Map;
+                    Conflict_Map : out Conflict_Maps.Map) is
+      -- For each Sub_Route builds a list of routes that traverse that
+      -- Sub_Route. Note this is directional so serches for opposing routes can
+      -- be conducted.
+
+      use Sub_Route_Lists;
+      use Route_Maps;
+      use Route_Sets;
+      use Conflict_Maps;
+
+   begin -- Build
+      Put_Line ("Building Conflict_Map");
+      Clear (Conflict_Map);
+      for R in Iterate (Route_Map) loop
+         for S in Iterate (Route_Map (R)) loop
+            if Contains (Conflict_Map, Element (S)) then
+               Include (Conflict_Map (Element (S)), Key (R));
+            else
+               Insert (Conflict_Map, Element (S), To_Set (Key (R)));
+            end if; -- Contains (Conflict_Map, Element (S))
+         end loop; -- S in Iterate (Route_Map (R))
+      end loop; -- R in Iterate (Route_Map)
    end Build;
 
 end Build_Structures;

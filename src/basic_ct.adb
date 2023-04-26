@@ -5,7 +5,8 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 23/04/2023
+-- Last Edit : 26/04/2023
+-- 20230426 : List opposing routes;
 -- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
 -- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
 -- Points route holding tracks extended to include next inroute track if
@@ -19,6 +20,7 @@ with Ada.Directories; use Ada.Directories;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers; use Ada.Containers;
+with Ada.Containers.Ordered_Maps;
 with CT_Types; use CT_Types;
 with Get_Data; use Get_Data;
 with Build_Structures; use Build_Structures;
@@ -142,7 +144,7 @@ procedure Basic_Ct is
       Tc : Track_Lists.Cursor;
 
    begin -- Route_Holding_Points
-      Put_Line (Output_File, "Points route held by tracks occupied:-");
+      Put_Line (Output_File, "Points, route held by tracks occupied:-");
       for P in Iterate (Point_List) loop
          Put (Output_File, Point_List (P).Point_Number'img & " " &
                 Point_List (P).Required_Lie'Img & " :");
@@ -157,18 +159,68 @@ procedure Basic_Ct is
       Put_Line (Output_File, Solid_Line);
    end Route_Holding_Points;
 
+   procedure Conflicting_Routes (Output_File : in out File_Type;
+                                 Sub_Route_List : in Sub_Route_Lists.List;
+                                 Conflict_Map : in Conflict_Maps.Map) is
+      use Sub_Route_Lists;
+      use Route_Sets;
+      use Conflict_Maps;
+      use Track_Lists;
+
+      package Locked_Lists is new
+        Ada.Containers.Ordered_Maps (Route_Names, Track_Names);
+      use Locked_Lists;
+
+      Opposite : Sub_Routes;
+      Locked_List : Locked_Lists.Map := Locked_Lists.Empty_Map;
+      Track_List : Track_Lists.List := Track_Lists.Empty_List;
+      Tc : Track_Lists.Cursor;
+
+   begin -- Conflicting_Routes
+      Put_Line (Output_File,
+                "Conflicting Routes, route held by tracks occupied:-");
+      -- Find the last track that route holds any opposing route.
+      for S in Iterate (Sub_Route_List) loop
+         Opposite.Track_Name := Element (S).Track_Name;
+         Append (Track_List, Element (S).Track_Name);
+         Opposite.Entrance_End := Element (S).Exit_End;
+         Opposite.Exit_End := Element (S).Entrance_End;
+         if Contains (Conflict_Map, Opposite) then
+            for R in Iterate (Conflict_Map (Opposite)) loop
+               include (Locked_List, Element (R), Opposite.Track_Name);
+            end loop; -- R in Iterate (Conflict_Map (Opposite))
+         end if; -- Contains (Conflict_Map, Opposite)
+      end loop; -- S in Iterate (Sub_Route_List)
+      for T in Iterate (Track_List) loop
+         for R in Iterate (Locked_List) loop
+            if Locked_List (R) = Element (T) then
+               Put (Output_File, Key (R) & " :");
+               Tc := First (Track_List);
+               loop -- until last holding track
+                  Put (Output_File, " " & Track_List (Tc));
+                  exit when Track_List (Tc) = Locked_List (R);
+                  Next (Tc);
+               end loop; -- until last holding track
+               New_Line (Output_File);
+            end if; -- Locked_List (R) = Element (T)
+         end loop; -- R in Iterate (Locked_List)
+      end loop; -- T in Iterate (Track_List)
+      Put_Line (Output_File, Solid_Line);
+   end Conflicting_Routes;
+
    Track_Store : Track_Stores.List;
    Signal_Store : Signal_Stores.Map;
    Route_Store : Route_Stores.Map;
    Track_Dictionary : Track_Dictionaries.Map;
    Sub_Route_to_Signal_Map : Sub_Route_to_Signal_Maps.Map;
    Route_Map : Route_Maps.Map;
+   Conflict_Map : Conflict_Maps.Map;
    Output_File : File_Type;
    Track_List : Track_Lists.List;
    Point_List : Point_Lists.List;
 
 begin
-   Put_Line ("Basic Control Table 20230423");
+   Put_Line ("Basic Control Table 20230426");
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);
@@ -176,6 +228,7 @@ begin
    Build (Signal_Store, Track_Dictionary, Sub_Route_to_Signal_Map);
    Build (Track_Store, Signal_Store, Route_Store, Track_Dictionary,
           Sub_Route_to_Signal_Map, Route_Map);
+   Build (Route_Map, Conflict_Map);
    for R in Iterate (Route_Store) loop
       Create (Output_File, Out_File, Compose (Output_Path, To_String (Key (R)),
               "txt"));
@@ -185,6 +238,7 @@ begin
       Build (Track_Store, Track_Dictionary, Route_Map (Key (R)), Point_List);
       Points_Detection (Output_File, Point_List);
       Route_Holding_Points (Output_File, Track_List, Point_List);
+      Conflicting_Routes (Output_File, Route_Map (Key (R)), Conflict_Map);
       Put_Line (Output_File, "End of text for " & Key (R));
       Close (Output_File);
    end loop; -- R in Iterate (Route_Store)

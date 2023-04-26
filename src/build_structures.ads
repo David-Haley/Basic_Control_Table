@@ -2,8 +2,10 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 23/04/2023
--- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
+-- Last Edit : 25/04/2023
+-- Building of Conflict_Map added.
+-- 20230423 : Track_Stores and Sub_Route_Lists changed from vector to doubly
+-- linked list.
 -- 202304 : Building of Track_List added.
 -- 20230410 : Building of points data added.
 
@@ -42,5 +44,10 @@ package Build_Structures is
    -- Builds the points related data for a single route as defined by the
    -- Sub_Route list. Each points number should appear once in the list even if
    -- another set of points intervenes, may be possible for remote trap points.
+
+   procedure Build (Route_Map : in Route_Maps.Map;
+                    Conflict_Map : out Conflict_Maps.Map);
+   -- For each Sub_Route builds a list of routes that traverse that Sub_Route.
+   -- Note this is directional so serches for opposing routes can be conducted.
 
 end Build_Structures;
