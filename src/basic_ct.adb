@@ -5,7 +5,8 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 26/04/2023
+-- Last Edit : 27/04/2023
+-- 20230427 : Remove conflicting routes that are locked out by points lie.
 -- 20230426 : List opposing routes;
 -- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
 -- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
@@ -161,48 +162,83 @@ procedure Basic_Ct is
 
    procedure Conflicting_Routes (Output_File : in out File_Type;
                                  Sub_Route_List : in Sub_Route_Lists.List;
-                                 Conflict_Map : in Conflict_Maps.Map) is
+                                 Conflict_Map : in Conflict_Maps.Map;
+                                 Route_Store : in Route_Stores.Map;
+                                 Signal_Store : in Signal_Stores.Map) is
       use Sub_Route_Lists;
       use Route_Sets;
       use Conflict_Maps;
       use Track_Lists;
 
+      Function Opposite (Sub_Route : in Sub_Routes) return Sub_Routes is
+         ((Sub_Route.Track_Name, Sub_Route.Exit_End, Sub_Route.Entrance_End));
+
+      function Locked_Out_by_Lie (Current : in Sub_Routes;
+                                  Track_List : in Track_Lists.List;
+                                  Opposing_Route : in Route_Names;
+                                  Route_Store : in Route_Stores.Map;
+                                  Signal_Store : in Signal_Stores.Map)
+                                  return Boolean is
+         use Route_Stores;
+         use Signal_Stores;
+
+         Opposing_Signal : Signal_Numbers renames
+           Route_Store (Opposing_Route).Entrance_Signal;
+         Opposing_Key : Track_Keys renames
+           Signal_Store (Opposing_Signal).Replacement_Track;
+
+      begin -- Locked_Out_by_Lie
+         return Current.Track_Name /= Last_Element (Track_List)
+              and then not (Current.Track_Name = Opposing_Key.Track_Name and
+                           Current.Entrance_End = Opposing_Key.Track_End);
+      end Locked_Out_by_Lie;
+
       package Locked_Lists is new
-        Ada.Containers.Ordered_Maps (Route_Names, Track_Names);
+        Ada.Containers.Ordered_Maps (Route_Names, Sub_Routes);
       use Locked_Lists;
 
-      Opposite : Sub_Routes;
       Locked_List : Locked_Lists.Map := Locked_Lists.Empty_Map;
       Track_List : Track_Lists.List := Track_Lists.Empty_List;
       Tc : Track_Lists.Cursor;
+      Rc, To_Delete : Locked_Lists.Cursor;
 
    begin -- Conflicting_Routes
       Put_Line (Output_File,
                 "Conflicting Routes, route held by tracks occupied:-");
       -- Find the last track that route holds any opposing route.
       for S in Iterate (Sub_Route_List) loop
-         Opposite.Track_Name := Element (S).Track_Name;
          Append (Track_List, Element (S).Track_Name);
-         Opposite.Entrance_End := Element (S).Exit_End;
-         Opposite.Exit_End := Element (S).Entrance_End;
-         if Contains (Conflict_Map, Opposite) then
-            for R in Iterate (Conflict_Map (Opposite)) loop
-               include (Locked_List, Element (R), Opposite.Track_Name);
-            end loop; -- R in Iterate (Conflict_Map (Opposite))
-         end if; -- Contains (Conflict_Map, Opposite)
+         if Contains (Conflict_Map, Opposite (Element (S))) then
+            for R in Iterate (Conflict_Map (Opposite (Element (S)))) loop
+               include (Locked_List, Element (R),
+                        Opposite (Element (S)));
+            end loop; -- R in Iterate (Conflict_Map (Opposite (Element (S))))
+         end if; -- Contains (Conflict_Map, Opposite (Element (S)))
       end loop; -- S in Iterate (Sub_Route_List)
+      Rc := First (Locked_List);
+      loop -- one route
+         if Locked_Out_by_Lie (Locked_List (Rc), Track_List, Key (Rc),
+                               Route_Store, Signal_Store) then
+            To_Delete := Rc;
+            Next (Rc);
+            Delete (Locked_List, To_Delete);
+         else
+            Next (Rc);
+         end if; -- Locked_Out_by_Lie (Locked_List (Rc), Track_List ...
+         exit when Rc = Locked_Lists.No_Element;
+      end loop;
       for T in Iterate (Track_List) loop
          for R in Iterate (Locked_List) loop
-            if Locked_List (R) = Element (T) then
+            if Locked_List (R).Track_Name = Element (T) then
                Put (Output_File, Key (R) & " :");
                Tc := First (Track_List);
                loop -- until last holding track
                   Put (Output_File, " " & Track_List (Tc));
-                  exit when Track_List (Tc) = Locked_List (R);
+                  exit when Track_List (Tc) = Locked_List (R).Track_Name;
                   Next (Tc);
                end loop; -- until last holding track
                New_Line (Output_File);
-            end if; -- Locked_List (R) = Element (T)
+            end if; -- Locked_List (R).Track_Name = Element (T)
          end loop; -- R in Iterate (Locked_List)
       end loop; -- T in Iterate (Track_List)
       Put_Line (Output_File, Solid_Line);
@@ -220,7 +256,7 @@ procedure Basic_Ct is
    Point_List : Point_Lists.List;
 
 begin
-   Put_Line ("Basic Control Table 20230426");
+   Put_Line ("Basic Control Table 20230427");
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);
@@ -238,7 +274,8 @@ begin
       Build (Track_Store, Track_Dictionary, Route_Map (Key (R)), Point_List);
       Points_Detection (Output_File, Point_List);
       Route_Holding_Points (Output_File, Track_List, Point_List);
-      Conflicting_Routes (Output_File, Route_Map (Key (R)), Conflict_Map);
+      Conflicting_Routes (Output_File, Route_Map (Key (R)), Conflict_Map,
+                         Route_Store, Signal_Store);
       Put_Line (Output_File, "End of text for " & Key (R));
       Close (Output_File);
    end loop; -- R in Iterate (Route_Store)
