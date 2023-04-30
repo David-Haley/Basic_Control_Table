@@ -5,8 +5,9 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 29/04/2023
--- 20230429 : Find conflicting roures over Diamonds.
+-- Last Edit : 30/04/2023
+-- 20230430 : Find conflicting roures over Diamonds. Extend locking if the exit
+-- end is not clearance.
 -- 20230427 : Remove conflicting routes that are locked out by points lie.
 -- 20230426 : List opposing routes;
 -- 20230423 : Signal Numbers made a string to allow for a prefix nmenonic.
@@ -193,15 +194,15 @@ procedure Basic_Ct is
       begin -- Locked_Out_by_Lie
          return Current.Track_Name /= Last_Element (Track_List)
               and then not (Current.Track_Name = Opposing_Key.Track_Name and
-                           Current.Entrance_End = Opposing_Key.Track_End);
+                           Current.Exit_End = Opposing_Key.Track_End);
       end Locked_Out_by_Lie;
 
       package Locked_Lists is new
         Ada.Containers.Ordered_Maps (Route_Names, Sub_Routes);
       use Locked_Lists;
 
-      procedure Diamond_Conflict (Current : in Sub_Routes;
-                                  Track_List : in Track_Lists.List;
+      procedure Diamond_Conflict (Current_In : in Sub_Routes;
+                                  Sub_Route_List : in Sub_Route_Lists.List;
                                   Track_Store : in Track_Stores.List;
                                   Track_Dictionary : in Track_Dictionaries.Map;
                                   Conflict_Map : in Conflict_Maps.Map;
@@ -211,28 +212,32 @@ procedure Basic_Ct is
          -- Switch_Diamonds will be locked by points lie of the diamond.
 
          function Index (Current : in Sub_Routes;
-                         Track_List : in Track_Lists.List) return Positive is
+                         Sub_Route_List : in Sub_Route_Lists.List)
+                         return Positive is
 
-            -- Returns the position count of Current.Track_Name into the
-            -- Track_List. Will raise an exception if Current.Track_Name is not
-            -- contained in Track_List.
+            -- Returns the position count of Current into the Sub_Route_List.
+            -- Will raise an exception if Current.Track_Name is not contained
+            -- in Sub_Route_List.
 
             Result : Positive := 1;
-            Tc : Track_Lists.Cursor := First (Track_List);
+            Sc : Sub_Route_Lists.Cursor := First (Sub_Route_List);
 
          begin -- Index
-            while Current.Track_Name /= Element (Tc) loop
-               Next (Tc);
+            while Current /= Element (Sc) loop
+               Next (Sc);
                Result := Result + 1;
-            end loop;
+            end loop; -- Sc /= Sub_Route_Lists.No_Element and then ...
             return Result;
          end Index;
 
 
+         Current : Sub_Routes := Current_In;
+         -- Create copy that can be changed if the exit is not clearance.
          Test_Track : Tracks renames
            Track_Store (Track_Dictionary ((Current.Track_Name,
                         Current.Entrance_End)));
          Cross_1, Cross_2 : Sub_Routes;
+         E : Diamond_End_Indices;
 
       begin -- Diamond_Conflict
          if Test_Track.Track_Type = Diamond then
@@ -261,7 +266,7 @@ procedure Basic_Ct is
                   Current.Exit_End and
                     Test_Track.Diamond_End_Array (Right_Cross).This_End =
                    Current.Entrance_End) then
-               -- conflict on Ctraight
+               -- conflict on Straight
                Cross_1 :=
                  (Current.Track_Name,
                   Test_Track.Diamond_End_Array (Left_Straight).This_End,
@@ -276,17 +281,31 @@ procedure Basic_Ct is
                  Current.Exit_End &
                  " does not represent a valid path through a diamond";
             end if; -- (Test_Track.Diamond_End_Array (Left_Straight).This_End ...
+            -- Check if the next subroute has to be included due to lack of
+            -- clearance. Note the loop exits if the value of Current is
+            -- changed, that is, the next subroute becomes the end of locking.
+            E := Diamond_End_Indices'First;
+            loop -- check one end
+               if Test_Track.Diamond_End_Array (E).This_End =
+                 Current.Exit_End and
+                 not Test_Track.Diamond_End_Array (E).Is_Clear then
+                  Current := Sub_Route_List (Next (Find (Sub_Route_List,
+                                             Current)));
+               end if; -- Test_Track.Diamond_End_Array (E).This_End = ...
+               exit when E = Diamond_End_Indices'Last or Current /= Current_in;
+               E := Diamond_End_Indices'Succ (E);
+            end loop; -- check one end
             for R in Iterate (Conflict_Map (Cross_1)) loop
                if Contains (Locked_List, Element (R)) then
                   -- Routes already have a conflict, required strange geography,
                   -- for example, the diverging ends of a set of points cross
                   -- over each other, Theebine in 1979!
-                  if Index (Cross_1, Track_list) >
-                    Index (Locked_List (Element (R)), Track_list) then
-                     Include (Locked_List, Element (R), Cross_1);
-                  end if; -- Index (Cross_1, Track_list) > ...
+                  if Index (Current, Sub_Route_List) >
+                    Index (Locked_List (Element (R)), Sub_Route_List) then
+                     Include (Locked_List, Element (R), Current);
+                  end if; --  Index (Current, Sub_Route_List) > ...
                else
-                  Include (Locked_List, Element (R), Cross_1);
+                  Include (Locked_List, Element (R), Current);
                end if; -- Contains (Locked_List, Element (R))
             end loop; -- R in Iterate (Conflict_Map (Cross_1))
             for R in Iterate (Conflict_Map (Cross_2)) loop
@@ -294,12 +313,12 @@ procedure Basic_Ct is
                   -- Routes already have a conflict, required strange geography,
                   -- for example, the diverging ends of a set of points cross
                   -- over each other, Theebine in 1979!
-                  if Index (Cross_2, Track_list) >
-                    Index (Locked_List (Element (R)), Track_list) then
-                     Include (Locked_List, Element (R), Cross_2);
+                  if Index (Current, Sub_Route_List) >
+                    Index (Locked_List (Element (R)), Sub_Route_List) then
+                     Include (Locked_List, Element (R), Current);
                   end if; -- Index (Cross_2, Track_list) >
                else
-                  Include (Locked_List, Element (R), Cross_2);
+                  Include (Locked_List, Element (R), Current);
                end if; -- Contains (Locked_List, Element (R))
             end loop; -- R in Iterate (Conflict_Map (Cross_2))
          end if; -- Test_Track.Track_Type = Diamond
@@ -318,8 +337,7 @@ procedure Basic_Ct is
          Append (Track_List, Element (S).Track_Name);
          if Contains (Conflict_Map, Opposite (Element (S))) then
             for R in Iterate (Conflict_Map (Opposite (Element (S)))) loop
-               include (Locked_List, Element (R),
-                        Opposite (Element (S)));
+               include (Locked_List, Element (R), Element (S));
             end loop; -- R in Iterate (Conflict_Map (Opposite (Element (S))))
          end if; -- Contains (Conflict_Map, Opposite (Element (S)))
       end loop; -- S in Iterate (Sub_Route_List)
@@ -337,7 +355,7 @@ procedure Basic_Ct is
       end loop; -- one route
       -- Check for conflicts at diamonds.
       for S in Iterate (Sub_Route_List) loop
-         Diamond_Conflict (Element (S), Track_List, Track_Store,
+         Diamond_Conflict (Element (S), Sub_Route_List, Track_Store,
                            Track_Dictionary, Conflict_Map, Locked_List);
       end loop; -- S in Iterate (Sub_Route_List)
       for T in Iterate (Track_List) loop
