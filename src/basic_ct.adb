@@ -387,7 +387,7 @@ procedure Basic_Ct is
    Point_List : Point_Lists.List;
 
 begin
-   Put_Line ("Basic Control Table 20230429");
+   Put_Line ("Basic Control Table 20230601");
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);

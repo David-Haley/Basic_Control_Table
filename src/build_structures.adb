@@ -66,9 +66,6 @@ package body Build_Structures is
             end if; -- Link.Track_Name /= Null_Unbounded_String
          end Insert;
 
-         Link_Set : Link_Sets.Set := Link_Sets.Empty_Set;
-         Current_End, Adjacent_End, Back_Link_Target : Track_Keys;
-
          function Find_Adjacent (Track_Store : in Track_Stores.List;
                                  Track_Dictionary : in Track_Dictionaries.Map;
                                  Link : in Track_Keys) return Track_Keys is
@@ -106,13 +103,21 @@ package body Build_Structures is
                   end loop; -- E in Diamond_End_Indices
             end case; -- Track.Track_Type
             return Result;
+         exception
+            when others =>
+               Put_Line ("Find_Adjacent, processing link " &
+                           To_String (Link.Track_Name) & " " & Link.Track_End);
+               raise;
          end Find_Adjacent;
 
+         Link_Set : Link_Sets.Set := Link_Sets.Empty_Set;
+         Current_End, Adjacent_End, Back_Link_Target : Track_Keys;
+
       begin -- Verify_Links
-         Put_Line ("Verifying adjacent track links are unique.");
-         for T in Iterate (Track_Store) loop
-            Current_End.Track_Name := Track_Store (T).Track_Name;
-            case Track_Store (T).Track_Type is
+         begin -- Link_Set
+            for T in Iterate (Track_Store) loop
+               Current_End.Track_Name := Track_Store (T).Track_Name;
+               case Track_Store (T).Track_Type is
                when Plain =>
                   Current_End.Track_End := Track_Store (T).Left_End;
                   Insert (Link_Set, Track_Store (T).Adjacent_Left, Current_End);
@@ -143,27 +148,43 @@ package body Build_Structures is
                              Track_Store (T).Switch_Diamond_End_Array (E).
                                Adjacent, Current_End);
                   end loop; -- E in Diamond_End_Indices
-            end case; -- Track_Store (T).Track_Type
-         end loop; -- T in Iterate (Track_Store)
+               end case; -- Track_Store (T).Track_Type
+            end loop; -- T in Iterate (Track_Store)
+         exception
+            when others =>
+               Put_Line ("Verify_Links, building set, error processing " &
+                           To_string (Current_End.Track_Name) & " " &
+                           Current_End.Track_End);
+               raise;
+         end; -- Link_Set
          Put_Line ("Verification complete," & Length (Link_Set)'Img &
                      " links found.");
          Put_Line ("Verifying links are consistent in both directions.");
          for L in Iterate (Link_Set) loop
-            -- Adjoining track pairs are effectively checked twice, deleting
-            -- verified links would preclude simple iteration schemes.
-            Adjacent_End := Find_Adjacent (Track_Store, Track_Dictionary,
-                                           Element (L));
-            Back_Link_Target := Find_Adjacent (Track_Store, Track_Dictionary,
-                                          Adjacent_End);
-            if Element (L) /= Back_Link_Target then
-               raise Data_Error with "Invalid linkage track adjacent to track "
-                 & To_String (Element (L).Track_Name) & " end " &
-                 Element (L).Track_End & " links to track " &
-                 To_String (Adjacent_End.Track_Name) & " end " &
-                 Adjacent_End.Track_End & " linked back to " &
-                 To_String (Back_Link_Target.Track_Name) & " end " &
-                 Back_Link_Target.Track_End;
-            end if; -- Element (L) /= Back_Link_Target
+            begin -- Consistency check
+               -- Adjoining track pairs are effectively checked twice, deleting
+               -- verified links would preclude simple iteration schemes.
+               Adjacent_End := Find_Adjacent (Track_Store, Track_Dictionary,
+                                              Element (L));
+               Back_Link_Target := Find_Adjacent (Track_Store, Track_Dictionary,
+                                                  Adjacent_End);
+               if Element (L) /= Back_Link_Target then
+                  raise Data_Error with
+                    "Invalid linkage track adjacent to track "
+                    & To_String (Element (L).Track_Name) & " end " &
+                    Element (L).Track_End & " links to track " &
+                    To_String (Adjacent_End.Track_Name) & " end " &
+                    Adjacent_End.Track_End & " which links back to " &
+                    To_String (Back_Link_Target.Track_Name) & " end " &
+                    Back_Link_Target.Track_End;
+               end if; -- Element (L) /= Back_Link_Target
+            exception
+               when others =>
+                  Put_Line ("Verify_Links, consistency check, error processing "
+                            & To_String (Element (L).Track_Name) & " " &
+                              Element (L).Track_End);
+                  raise;
+            end; -- Consistency check
          end loop; -- L in Iterate (Link_Set)
          Put_Line ("Verification of link consistency complete");
          Clear (Link_Set);
@@ -243,8 +264,8 @@ package body Build_Structures is
          begin -- Include exception block
             Track_Key := Signal_Store (Sc).Replacement_Track;
             if Contains (Sub_Route_to_Signal_Map, Track_Key) then
-               raise Data_Error with "Duplicate signal" & To_String (Key (Sc)) &
-                 " at " & Signal_Store (Sc).Replacement_Track.Track_End &
+               raise Data_Error with "Duplicate signal " & To_String (Key (Sc))
+                 & " at " & Signal_Store (Sc).Replacement_Track.Track_End &
                  " end of " &
                  To_String (Signal_Store (Sc).Replacement_Track.Track_Name) &
                  " track";
@@ -303,7 +324,7 @@ package body Build_Structures is
             end if; -- not Contains (Signal_Store, Route_Store (R) ...
             if not Contains (Signal_Store, Route_Store (R).Exit_Signal) then
                raise Data_Error with "Route " & To_String (Key (R)) &
-                 " exit signal" & To_String (Route_Store (R).Exit_Signal) &
+                 " exit signal " & To_String (Route_Store (R).Exit_Signal) &
                  " not defined.";
             elsif Route_Store (R).Route_Class in Main_Route_Classes and
               not Signal_Store (Route_Store (R).Exit_Signal).Is_Main then
