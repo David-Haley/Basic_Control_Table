@@ -2,7 +2,9 @@
 
 -- Author    : David Haley
 -- Created   : 27/03/2023
--- Last Edit : 25/04/2026
+-- Last Edit : 01/06/2023
+-- 20230601 : Added exceprion handlers to allow easier identification of errors
+-- in input data.
 -- Building of Conflict_Map added.
 -- 20230426 : Signal Numbers made a string to allow for a prefix nmenonic.
 -- Track_Stores and Sub_Route_Lists changed from vector to doubly linked list.
@@ -879,6 +881,7 @@ package body Build_Structures is
 
    procedure Build (Route_Map : in Route_Maps.Map;
                     Conflict_Map : out Conflict_Maps.Map) is
+
       -- For each Sub_Route builds a list of routes that traverse that
       -- Sub_Route. Note this is directional so serches for opposing routes can
       -- be conducted.
@@ -900,6 +903,7 @@ package body Build_Structures is
             end if; -- Contains (Conflict_Map, Element (S))
          end loop; -- S in Iterate (Route_Map (R))
       end loop; -- R in Iterate (Route_Map)
+      Put_Line ("Building Conflict_Map completed");
    end Build;
 
 end Build_Structures;

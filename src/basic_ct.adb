@@ -5,7 +5,11 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 30/04/2023
+-- Last Edit : 02/06/2023
+-- 20230602 : Eliminate repeated listing of the same track when there are
+-- mutiple sub_routes within the same track.
+-- 20230601 : Added exceprion handlers to allow easier identification of errors
+-- in input data.
 -- 20230430 : Find conflicting roures over Diamonds. Extend locking if the exit
 -- end is not clearance.
 -- 20230427 : Remove conflicting routes that are locked out by points lie.
@@ -334,7 +338,13 @@ procedure Basic_Ct is
                 "Conflicting Routes, route held by tracks occupied:-");
       -- Find the last track that route holds any opposing route.
       for S in Iterate (Sub_Route_List) loop
-         Append (Track_List, Element (S).Track_Name);
+         if Is_Empty (Track_List) or else
+           Last_Element (Track_List) /= Element (S).Track_Name then
+            -- Only include track if it is not already in list, allows for a
+            -- route to traverse the same track twice if there are intervening
+            -- tracks. Would require some weird geography!
+            Append (Track_List, Element (S).Track_Name);
+         end if; -- Is_Empty (Track_List) or else
          if Contains (Conflict_Map, Opposite (Element (S))) then
             for R in Iterate (Conflict_Map (Opposite (Element (S)))) loop
                include (Locked_List, Element (R), Element (S));
@@ -387,7 +397,7 @@ procedure Basic_Ct is
    Point_List : Point_Lists.List;
 
 begin
-   Put_Line ("Basic Control Table 20230601");
+   Put_Line ("Basic Control Table 20230602");
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);
