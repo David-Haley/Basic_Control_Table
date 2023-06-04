@@ -5,7 +5,9 @@
 
 -- Author    : David Haley
 -- Created   : 24/03/2023
--- Last Edit : 02/06/2023
+-- Last Edit : 04/06/2023
+-- 20230604 : Generalised Locked_Out_by_Lie. File Header modified and file
+-- Footer added. Version now reported in Footer
 -- 20230602 : Eliminate repeated listing of the same track when there are
 -- mutiple sub_routes within the same track.
 -- 20230601 : Added exceprion handlers to allow easier identification of errors
@@ -24,6 +26,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Text_IO.Unbounded_IO; use Ada.Text_IO.Unbounded_IO;
 with Ada.Command_Line; use Ada.Command_Line;
 with Ada.Directories; use Ada.Directories;
+with Ada.Strings.Maps; use Ada.Strings.Maps;
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Ada.Containers; use Ada.Containers;
@@ -76,13 +79,24 @@ procedure Basic_Ct is
 
    begin -- Header
       Put_Line ("Writing CT for " & Route);
-      Put_Line (Output_File, "Date: " & Date_String & "  Time: " & Time_String);
       Put_Line (Output_File, "Route: " & Route & " from " &
                   Route_Store (Route).Entrance_Signal & " to " &
                   Route_Store (Route).Exit_Signal & " Route class " &
                   Route_Store (Route).Route_Class'Img);
       Put_Line (Output_File, Solid_Line);
    end Header;
+
+   procedure Footer (Output_File : in out File_Type;
+                     Route : in Route_Names;
+                     Version : in String) is
+
+   begin -- Footer
+      Put_Line (Output_File, "End of text for " & Route);
+      Put_Line (Output_File, "File_Name : " & Name (Output_File));
+      Put_Line (Output_File, "Basic Control Table Version " & Version);
+      Put_Line (Output_File, "End of file " & Simple_Name (Name (Output_File)) &
+                  " at Date: " & Date_String & "  Time: " & Time_String);
+   end Footer;
 
    procedure Tracks_Clear (Output_File : in out File_Type;
                            Route : in Route_Names;
@@ -91,7 +105,7 @@ procedure Basic_Ct is
 
       -- Reports inroute tracks required clear.
 
-      use track_lists;
+      use Track_Lists;
 
    begin -- Tracks_Clear
       Put_Line (Output_File, "Aspect requires:-");
@@ -167,38 +181,79 @@ procedure Basic_Ct is
    end Route_Holding_Points;
 
    procedure Conflicting_Routes (Output_File : in out File_Type;
-                                 Sub_Route_List : in Sub_Route_Lists.List;
+                                 Route_Map : in Route_Maps.Map;
+                                 Current_Route : in Route_Names;
                                  Conflict_Map : in Conflict_Maps.Map;
                                  Track_Store : in Track_Stores.List;
                                  Track_Dictionary : in Track_Dictionaries.Map;
                                  Route_Store : in Route_Stores.Map;
                                  Signal_Store : in Signal_Stores.Map) is
+
+      use Route_Maps;
       use Sub_Route_Lists;
       use Route_Sets;
       use Conflict_Maps;
       use Track_Lists;
 
       Function Opposite (Sub_Route : in Sub_Routes) return Sub_Routes is
-         ((Sub_Route.Track_Name, Sub_Route.Exit_End, Sub_Route.Entrance_End));
+        ((Sub_Route.Track_Name, Sub_Route.Exit_End, Sub_Route.Entrance_End));
 
-      function Locked_Out_by_Lie (Current : in Sub_Routes;
-                                  Track_List : in Track_Lists.List;
+      function Locked_Out_by_Lie (Current_Route : in Route_Names;
                                   Opposing_Route : in Route_Names;
-                                  Route_Store : in Route_Stores.Map;
-                                  Signal_Store : in Signal_Stores.Map)
+                                  Route_Map : in Route_Maps.Map)
                                   return Boolean is
-         use Route_Stores;
-         use Signal_Stores;
 
-         Opposing_Signal : Signal_Numbers renames
-           Route_Store (Opposing_Route).Entrance_Signal;
-         Opposing_Key : Track_Keys renames
-           Signal_Store (Opposing_Signal).Replacement_Track;
+         use Route_Maps;
+
+         First_Common_Sub_Route, Last_Common_Sub_Route : Sub_Route_Lists.Cursor
+           := Sub_Route_Lists.No_Element;
+         Cc : Sub_Route_Lists.Cursor;
+         Result : Boolean := False;
 
       begin -- Locked_Out_by_Lie
-         return Current.Track_Name /= Last_Element (Track_List)
-              and then not (Current.Track_Name = Opposing_Key.Track_Name and
-                           Current.Exit_End = Opposing_Key.Track_End);
+         for Cc in Iterate (Route_Map (Current_Route)) loop
+            for Oc in Iterate (Route_Map (Opposing_Route)) loop
+               if Element (Cc).Track_Name = Element (Oc).Track_Name and
+                 (Element (Cc).Entrance_End = Element (Oc).Exit_End or
+                      Element (Cc).Exit_End = Element (Oc).Entrance_End) then
+                  -- Common subroute found update Last_Common_Sub_Route
+                  Last_Common_Sub_Route := Cc;
+                  if First_Common_Sub_Route = Sub_Route_Lists.No_Element then
+                     First_Common_Sub_Route := Cc;
+                  end if; -- First_Common_Sub_Route = Sub_Route_Lists.No_Element
+               end if; -- Element (Cc).Track_Name = Element (Oc).Track_Name ...
+            end loop; -- Oc in Iterate (Route_Map (Opposing_Route))
+         end loop; -- Cc in Iterate (Route_Map (Current_Route))
+         if First_Common_Sub_Route = Sub_Route_Lists.No_Element or
+           Last_Common_Sub_Route = Sub_Route_Lists.No_Element then
+            raise Program_Error with "Locked_Out_by_Lie " &
+              To_String (Current_Route) & " and  " &To_String (Opposing_Route) &
+              " have no common subroutes.";
+         end if; -- First_Common_Sub_Route = Sub_Route_Lists.No_Element or ...
+         Cc := First_Common_Sub_Route;
+         loop -- Iterate over Current_Route common subroutes
+            for Oc in Iterate (Route_Map (Opposing_Route)) loop
+               Result := Result or
+                 (Element (Cc).Track_Name = Element (Oc).Track_Name and
+                      ((Element (Cc).Entrance_End = Element (Oc).Exit_End and
+                            Element (Cc).Exit_End /= Element (Oc).Entrance_End)
+                         -- Facing points for current route where the opposing
+                       -- route comes from a different exit
+                       or
+                         (Element (Last_Common_Sub_Route).Track_Name =
+                              Element (Oc).Track_Name and
+                              Element (Cc).Exit_End =
+                              Element (Oc).Entrance_End and
+                              Element (Cc).Entrance_End /=
+                              Element (Oc).Exit_End)));
+               -- Trailing points in last track which is common to both routes
+               -- and the lie requied does not match opposing route.
+            end loop; -- Oc in Iterate (Route_Map (Opposing_Route))
+            exit when Cc = Last_Common_Sub_Route or
+              Next (Cc) = Sub_Route_Lists.No_Element;
+            Next (Cc);
+         end loop; -- Iterate over Current_Route common subroutes
+         return Result;
       end Locked_Out_by_Lie;
 
       package Locked_Lists is new
@@ -250,8 +305,8 @@ procedure Basic_Ct is
                     Test_Track.Diamond_End_Array (Right_Straight).This_End =
                   Current.Exit_End) or
               (Test_Track.Diamond_End_Array (Left_Straight).This_End =
-                  Current.Exit_End and
-                    Test_Track.Diamond_End_Array (Right_Straight).This_End =
+                   Current.Exit_End and
+                     Test_Track.Diamond_End_Array (Right_Straight).This_End =
                    Current.Entrance_End) then
                -- conflict on Cross
                Cross_1 :=
@@ -263,12 +318,12 @@ procedure Basic_Ct is
                   Test_Track.Diamond_End_Array (Right_Cross).This_End,
                   Test_Track.Diamond_End_Array (Left_Cross).This_End);
             elsif (Test_Track.Diamond_End_Array (Left_Cross).This_End =
-                  Current.Entrance_End and
-                    Test_Track.Diamond_End_Array (Right_Cross).This_End =
-                  Current.Exit_End) or
+                     Current.Entrance_End and
+                       Test_Track.Diamond_End_Array (Right_Cross).This_End =
+                     Current.Exit_End) or
               (Test_Track.Diamond_End_Array (Left_Cross).This_End =
-                  Current.Exit_End and
-                    Test_Track.Diamond_End_Array (Right_Cross).This_End =
+                   Current.Exit_End and
+                     Test_Track.Diamond_End_Array (Right_Cross).This_End =
                    Current.Entrance_End) then
                -- conflict on Straight
                Cross_1 :=
@@ -328,6 +383,7 @@ procedure Basic_Ct is
          end if; -- Test_Track.Track_Type = Diamond
       end Diamond_Conflict;
 
+      Sub_Route_List : Sub_Route_Lists.List renames Route_Map (Current_Route);
       Locked_List : Locked_Lists.Map := Locked_Lists.Empty_Map;
       Track_List : Track_Lists.List := Track_Lists.Empty_List;
       Tc : Track_Lists.Cursor;
@@ -352,17 +408,16 @@ procedure Basic_Ct is
          end if; -- Contains (Conflict_Map, Opposite (Element (S)))
       end loop; -- S in Iterate (Sub_Route_List)
       Rc := First (Locked_List);
-      loop -- one route
-         if Locked_Out_by_Lie (Locked_List (Rc), Track_List, Key (Rc),
-                               Route_Store, Signal_Store) then
+      loop -- one opposing route
+         if Locked_Out_by_Lie (Current_Route, Key (Rc), Route_Map) then
             To_Delete := Rc;
             Next (Rc);
             Delete (Locked_List, To_Delete);
          else
             Next (Rc);
-         end if; -- Locked_Out_by_Lie (Locked_List (Rc), Track_List ...
+         end if; -- Locked_Out_by_Lie (Current_Route, Element (Rc), Route_Maps)
          exit when Rc = Locked_Lists.No_Element;
-      end loop; -- one route
+      end loop; -- one opposing route
       -- Check for conflicts at diamonds.
       for S in Iterate (Sub_Route_List) loop
          Diamond_Conflict (Element (S), Sub_Route_List, Track_Store,
@@ -385,6 +440,7 @@ procedure Basic_Ct is
       Put_Line (Output_File, Solid_Line);
    end Conflicting_Routes;
 
+   Version : String := "20230604";
    Track_Store : Track_Stores.List;
    Signal_Store : Signal_Stores.Map;
    Route_Store : Route_Stores.Map;
@@ -396,8 +452,8 @@ procedure Basic_Ct is
    Track_List : Track_Lists.List;
    Point_List : Point_Lists.List;
 
-begin
-   Put_Line ("Basic Control Table 20230602");
+begin -- Basic_Ct
+   Put_Line ("Basic Control Table Version " & Version);
    Get (Track_Store);
    Get (Signal_Store);
    Get (Route_Store);
@@ -415,10 +471,10 @@ begin
       Build (Track_Store, Track_Dictionary, Route_Map (Key (R)), Point_List);
       Points_Detection (Output_File, Point_List);
       Route_Holding_Points (Output_File, Track_List, Point_List);
-      Conflicting_Routes (Output_File, Route_Map (Key (R)), Conflict_Map,
+      Conflicting_Routes (Output_File, Route_Map, Key (R), Conflict_Map,
                           Track_Store, Track_Dictionary, Route_Store,
                           Signal_Store);
-      Put_Line (Output_File, "End of text for " & Key (R));
+      Footer (Output_File, Key (R), Version);
       Close (Output_File);
    end loop; -- R in Iterate (Route_Store)
    Put_Line ("Processing Complete");
